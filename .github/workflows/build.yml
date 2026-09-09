@@ -27,36 +27,25 @@ jobs:
 
     - name: Create Flutter project
       run: |
-        # حذف فایل‌های قبلی (به جز .git)
         find . -maxdepth 1 ! -name '.git' ! -name '.' -exec rm -rf {} \;
-        # ایجاد یک پروژه فلاتر جدید
         flutter create --org com.example --project-name my_app .
 
     - name: Install dependencies
       run: flutter pub get
 
-    - name: Build APK
-      run: flutter build apk --release
-
     - name: Decode Keystore
       run: |
         echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > keystore.jks
 
-    - name: Sign APK
+    - name: Create key.properties
       run: |
-        jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 \
-          -keystore keystore.jks -storepass ${{ secrets.KEYSTORE_PASSWORD }} \
-          -keypass ${{ secrets.KEY_ALIAS_PASSWORD }} \
-          build/app/outputs/flutter-apk/app-release-unsigned.apk \
-          ${{ secrets.KEY_ALIAS }}
+        echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
+        echo "keyPassword=${{ secrets.KEY_ALIAS_PASSWORD }}" >> android/key.properties
+        echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+        echo "storeFile=../keystore.jks" >> android/key.properties
 
-    - name: Align APK
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y google-android-build-tools-33-installer
-        zipalign -v -p 4 \
-          build/app/outputs/flutter-apk/app-release-unsigned.apk \
-          build/app/outputs/flutter-apk/app-release.apk
+    - name: Build APK (Release)
+      run: flutter build apk --release
 
     - name: Upload APK as Artifact
       uses: actions/upload-artifact@v4
