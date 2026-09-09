@@ -29,7 +29,7 @@ jobs:
       run: flutter pub get
 
     - name: Build APK (unsigned)
-      run: flutter build apk --release
+      run: flutter build apk --release --no-tree-shake-icons
 
     - name: Decode Keystore
       run: |
@@ -45,7 +45,10 @@ jobs:
 
     - name: Align APK
       run: |
-        $ANDROID_HOME/build-tools/33.0.2/zipalign -v -p 4 \
+        # نصب ابزارهای مورد نیاز
+        sudo apt-get update
+        sudo apt-get install -y google-android-build-tools-33-installer
+        zipalign -v -p 4 \
           build/app/outputs/flutter-apk/app-release-unsigned.apk \
           build/app/outputs/flutter-apk/app-release.apk
 
