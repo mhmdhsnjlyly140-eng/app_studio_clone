@@ -25,11 +25,18 @@ jobs:
         flutter-version: '3.29.0'
         channel: 'stable'
 
+    - name: Create Flutter project
+      run: |
+        # حذف فایل‌های قبلی (به جز .git)
+        find . -maxdepth 1 ! -name '.git' ! -name '.' -exec rm -rf {} \;
+        # ایجاد یک پروژه فلاتر جدید
+        flutter create --org com.example --project-name my_app .
+
     - name: Install dependencies
       run: flutter pub get
 
-    - name: Build APK (unsigned)
-      run: flutter build apk --release --no-tree-shake-icons
+    - name: Build APK
+      run: flutter build apk --release
 
     - name: Decode Keystore
       run: |
@@ -45,7 +52,6 @@ jobs:
 
     - name: Align APK
       run: |
-        # نصب ابزارهای مورد نیاز
         sudo apt-get update
         sudo apt-get install -y google-android-build-tools-33-installer
         zipalign -v -p 4 \
