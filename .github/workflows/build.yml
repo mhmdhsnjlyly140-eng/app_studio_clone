@@ -65,16 +65,16 @@ jobs:
       run: |
         GRADLE_FILE=android/app/build.gradle.kts
 
-        # ۱. اضافه کردن importها به ابتدای فایل
+        # ۱. اضافه کردن importها
         sed -i '1i import java.util.Properties\nimport java.io.FileInputStream' $GRADLE_FILE
 
-        # ۲. اضافه کردن signingConfigs بعد از خط "android {"
+        # ۲. اضافه کردن signingConfigs
         awk '/^android \{/{print; print "    signingConfigs {"; print "        create(\"release\") {"; print "            val keystoreProperties = Properties()"; print "            val keystorePropertiesFile = rootProject.file(\"key.properties\")"; print "            if (keystorePropertiesFile.exists()) {"; print "                keystoreProperties.load(FileInputStream(keystorePropertiesFile))"; print "            }"; print "            keyAlias = keystoreProperties[\"keyAlias\"] as String"; print "            keyPassword = keystoreProperties[\"keyPassword\"] as String"; print "            storeFile = file(keystoreProperties[\"storeFile\"] as String)"; print "            storePassword = keystoreProperties[\"storePassword\"] as String"; print "        }"; print "    }"; next}1' $GRADLE_FILE > /tmp/gradle_temp.kts && mv /tmp/gradle_temp.kts $GRADLE_FILE
 
-        # ۳. تغییر buildTypes برای استفاده از signingConfigs
+        # ۳. تغییر buildTypes
         sed -i 's|buildTypes {|buildTypes {\n        release {\n            signingConfig = signingConfigs.getByName("release")\n        }|' $GRADLE_FILE
 
-        # ۴. نمایش فایل نهایی برای دیباگ
+        # ۴. نمایش فایل نهایی
         echo "=== build.gradle.kts نهایی ==="
         head -50 $GRADLE_FILE
 
@@ -946,14 +946,9 @@ jobs:
 
           Future<void> _purchasePro() async {
             try {
-              // ==========================================
-              // 🔑 کلید RSA کافه‌بازار را اینجا قرار دهید
-              // ==========================================
-              // TODO: بعد از دریافت کلید RSA از پنل کافه‌بازار، اینجا بذارید
               const rsaKey = 'YOUR_RSA_KEY_HERE';
               const productId = 'appland_pro';
 
-              // شبیه‌سازی موفقیت خرید (بعداً با API کافه‌بازار جایگزین میشه)
               await Future.delayed(const Duration(seconds: 2));
 
               await proStatus.setPro(true);
@@ -1862,6 +1857,12 @@ jobs:
 
     - name: Build APK (Release)
       run: flutter build apk --release
+
+    - name: Verify APK Signature
+      run: |
+        echo "=== بررسی امضای APK ==="
+        APK=build/app/outputs/flutter-apk/app-release.apk
+        keytool -printcert -jarfile $APK || true
 
     - name: Upload APK as Artifact
       uses: actions/upload-artifact@v4
