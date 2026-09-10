@@ -30,6 +30,13 @@ jobs:
         find . -maxdepth 1 ! -name '.git' ! -name '.' -exec rm -rf {} \;
         flutter create --org com.appland --project-name appland .
 
+    - name: Set NDK Version
+      run: |
+        GRADLE_FILE=android/app/build.gradle.kts
+        if [ -f "$GRADLE_FILE" ]; then
+          sed -i 's|android {|android {\n    ndkVersion = "27.0.12077973"|' $GRADLE_FILE || true
+        fi
+
     - name: Install dependencies
       run: |
         flutter pub get
@@ -813,7 +820,7 @@ jobs:
                   },
                 ),
                 _cardTile(
-                  icon: Icons.splash,
+                  icon: Icons.wallpaper,
                   title: 'Splash Screen',
                   subtitle: 'صفحه شروع اپ',
                   onTap: () {
@@ -883,9 +890,7 @@ jobs:
                 ),
                 const SizedBox(height: 8),
                 TextField(
-                  controller: TextEditingController(text: _app!.adiveryKey)
-                    ..selection = TextSelection.collapsed(
-                        offset: _app!.adiveryKey.length),
+                  controller: TextEditingController(text: _app!.adiveryKey),
                   onChanged: (v) {
                     _app!.adiveryKey = v;
                   },
@@ -904,9 +909,7 @@ jobs:
                 ),
                 const SizedBox(height: 8),
                 TextField(
-                  controller: TextEditingController(text: _app!.tapsellKey)
-                    ..selection = TextSelection.collapsed(
-                        offset: _app!.tapsellKey.length),
+                  controller: TextEditingController(text: _app!.tapsellKey),
                   onChanged: (v) {
                     _app!.tapsellKey = v;
                   },
@@ -959,9 +962,7 @@ jobs:
                 ),
                 const SizedBox(height: 8),
                 TextField(
-                  controller: TextEditingController(text: _app!.rsaKey)
-                    ..selection = TextSelection.collapsed(
-                        offset: _app!.rsaKey.length),
+                  controller: TextEditingController(text: _app!.rsaKey),
                   onChanged: (v) {
                     _app!.rsaKey = v;
                   },
@@ -1002,7 +1003,6 @@ jobs:
             return ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                // تغییر آیکون
                 ListTile(
                   leading: const Icon(Icons.image,
                       color: Color(0xFF6A11CB)),
@@ -1014,8 +1014,6 @@ jobs:
                   onTap: _changeIcon,
                 ),
                 const Divider(),
-
-                // تغییر نام
                 ListTile(
                   leading: const Icon(Icons.edit,
                       color: Color(0xFF6A11CB)),
@@ -1025,8 +1023,6 @@ jobs:
                   onTap: _changeName,
                 ),
                 const Divider(),
-
-                // پکیج نیم
                 ListTile(
                   leading: const Icon(Icons.code,
                       color: Color(0xFF6A11CB)),
@@ -1045,10 +1041,8 @@ jobs:
                   ),
                 ),
                 const Divider(),
-
-                // Splash
                 ListTile(
-                  leading: const Icon(Icons.splash,
+                  leading: const Icon(Icons.wallpaper,
                       color: Color(0xFF6A11CB)),
                   title: const Text('Splash Screen'),
                   subtitle: Text(_app!.splashText.isEmpty
