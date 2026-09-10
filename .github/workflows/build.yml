@@ -149,13 +149,15 @@ jobs:
           DART_END
 
       - name: Install deps
-        run: |
-          flutter pub get
+        run: flutter pub get
 
       - name: Decode Keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/appland.jks
-          ls -la android/app/appland.jks
+          echo "=== Keystore info ==="
+          keytool -list -v -keystore android/app/appland.jks -storepass ${{ secrets.KEYSTORE_PASSWORD }} || true
+          echo "=== Alias check ==="
+          keytool -list -keystore android/app/appland.jks -storepass ${{ secrets.KEYSTORE_PASSWORD }} -alias ${{ secrets.KEY_ALIAS }} || echo "ALIAS NOT FOUND!"
 
       - name: Build APK
         run: flutter build apk --release
@@ -172,8 +174,7 @@ jobs:
             ${{ secrets.KEY_ALIAS }}
 
       - name: Verify Signature
-        run: |
-          keytool -printcert -jarfile build/app/outputs/flutter-apk/app-release.apk
+        run: keytool -printcert -jarfile build/app/outputs/flutter-apk/app-release.apk
 
       - uses: actions/upload-artifact@v4
         with:
