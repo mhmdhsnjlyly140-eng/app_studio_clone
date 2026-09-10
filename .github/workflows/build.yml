@@ -4,6 +4,15 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      store:
+        description: 'Store to build for (bazaar/myket)'
+        required: true
+        default: 'bazaar'
+        type: choice
+        options:
+          - bazaar
+          - myket
 
 jobs:
   build:
@@ -37,17 +46,34 @@ jobs:
           sed -i 's|android {|android {\n    ndkVersion = "27.0.12077973"|' $GRADLE_FILE || true
         fi
 
+    - name: Add JitPack repository
+      run: |
+        # اضافه کردن JitPack به build.gradle
+        sed -i 's|repositories {|repositories {\n        maven { url "https://jitpack.io" }|' android/build.gradle.kts || true
+
+    - name: Set up MainActivity
+      run: |
+        # تغییر MainActivity برای پشتیبانی از پرداخت
+        cat > android/app/src/main/kotlin/com/appland/appland/MainActivity.kt << 'KOTLIN_EOF'
+        package com.appland.appland
+
+        import io.flutter.embedding.android.FlutterFragmentActivity
+
+        class MainActivity: FlutterFragmentActivity()
+        KOTLIN_EOF
+
     - name: Install dependencies
       run: |
         flutter pub get
         flutter pub add shared_preferences
         flutter pub add url_launcher
         flutter pub add image_picker
+        flutter pub add iran_iap
 
     - name: Add Android permissions
       run: |
         MANIFEST=android/app/src/main/AndroidManifest.xml
-        sed -i 's|<application|<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>\n    <application|' $MANIFEST || true
+        sed -i 's|<application|<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>\n    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="ir.mservices.market.BILLING"/>\n    <application|' $MANIFEST || true
 
     - name: Write AppLand main.dart
       run: |
@@ -56,8 +82,34 @@ jobs:
         import 'package:shared_preferences/shared_preferences.dart';
         import 'package:url_launcher/url_launcher.dart';
         import 'package:image_picker/image_picker.dart';
+        import 'package:iran_iap/iran_iap.dart';
         import 'dart:convert';
         import 'dart:io';
+
+        // ==================== ProStatus ====================
+        class ProStatus extends ChangeNotifier {
+          bool _isPro = false;
+          bool get isPro => _isPro;
+
+          ProStatus() {
+            _loadStatus();
+          }
+
+          Future<void> _loadStatus() async {
+            final prefs = await SharedPreferences.getInstance();
+            _isPro = prefs.getBool('is_pro') ?? false;
+            notifyListeners();
+          }
+
+          Future<void> setPro(bool value) async {
+            _isPro = value;
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setBool('is_pro', value);
+            notifyListeners();
+          }
+        }
+
+        final proStatus = ProStatus();
 
         // ==================== ThemeNotifier ====================
         class ThemeNotifier extends ChangeNotifier {
@@ -797,12 +849,16 @@ jobs:
                   title: 'خروجی APK',
                   subtitle: 'ساخت فایل نصب اندروید',
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const UnderDevelopmentPage(),
-                      ),
-                    );
+                    if (proStatus.isPro) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const UnderDevelopmentPage(),
+                        ),
+                      );
+                    } else {
+                      _showProDialog();
+                    }
                   },
                 ),
                 _cardTile(
@@ -828,6 +884,83 @@ jobs:
                 ),
               ],
             );
+          }
+
+          void _showProDialog() {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('نسخه پرو'),
+                content: const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.star, size: 60, color: Colors.amber),
+                    SizedBox(height: 16),
+                    Text(
+                      'برای دریافت APK و استفاده از قابلیت‌های پیشرفته، نیاز به خرید نسخه پرو دارید.',
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'قیمت: ۱۹۹,۰۰۰ تومان',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('بعداً'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      Navigator.pop(context);
+                      await _purchasePro();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6A11CB),
+                    ),
+                    child: const Text('خرید نسخه پرو'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          Future<void> _purchasePro() async {
+            try {
+              // TODO: شناسه کالا را با شناسه واقعی خود جایگزین کنید
+              const productId = 'appland_pro';
+
+              // برای کافه‌بازار
+              // final iap = IranIap();
+              // await iap.initialize(store: Store.bazaar);
+
+              // برای مایکت
+              // final iap = IranIap();
+              // await iap.initialize(store: Store.myket, rsaKey: 'YOUR_RSA_KEY');
+
+              // await iap.purchase(productId);
+
+              // بعد از موفقیت:
+              await proStatus.setPro(true);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('نسخه پرو فعال شد! 🎉'),
+                  ),
+                );
+              }
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('خطا در خرید: $e')),
+                );
+              }
+            }
           }
 
           void _showSplashDialog() {
@@ -883,6 +1016,20 @@ jobs:
             return ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                if (!proStatus.isPro)
+                  Card(
+                    color: Colors.amber.shade50,
+                    child: ListTile(
+                      leading: const Icon(Icons.lock, color: Colors.amber),
+                      title: const Text('نیاز به نسخه پرو'),
+                      subtitle: const Text('برای استفاده، نسخه پرو را بخرید'),
+                      trailing: TextButton(
+                        onPressed: _showProDialog,
+                        child: const Text('خرید'),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 16),
                 const Text(
                   'سرویس تبلیغاتی ادیوری',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -893,12 +1040,16 @@ jobs:
                   onChanged: (v) {
                     _app!.adiveryKey = v;
                   },
+                  enabled: proStatus.isPro,
                   decoration: InputDecoration(
                     hintText: 'کلید ادیوری خود را وارد کنید',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     prefixIcon: const Icon(Icons.campaign),
+                    suffixIcon: proStatus.isPro
+                        ? null
+                        : const Icon(Icons.lock, color: Colors.grey),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -912,24 +1063,30 @@ jobs:
                   onChanged: (v) {
                     _app!.tapsellKey = v;
                   },
+                  enabled: proStatus.isPro,
                   decoration: InputDecoration(
                     hintText: 'کلید تپسل خود را وارد کنید',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     prefixIcon: const Icon(Icons.campaign),
+                    suffixIcon: proStatus.isPro
+                        ? null
+                        : const Icon(Icons.lock, color: Colors.grey),
                   ),
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
-                  onPressed: () {
-                    _saveApp();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('کلیدهای تبلیغات ذخیره شد! ✅'),
-                      ),
-                    );
-                  },
+                  onPressed: proStatus.isPro
+                      ? () {
+                          _saveApp();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('کلیدهای تبلیغات ذخیره شد! ✅'),
+                            ),
+                          );
+                        }
+                      : _showProDialog,
                   icon: const Icon(Icons.save),
                   label: const Text('ذخیره کلیدها'),
                   style: ElevatedButton.styleFrom(
@@ -950,13 +1107,27 @@ jobs:
             return ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                if (!proStatus.isPro)
+                  Card(
+                    color: Colors.amber.shade50,
+                    child: ListTile(
+                      leading: const Icon(Icons.lock, color: Colors.amber),
+                      title: const Text('نیاز به نسخه پرو'),
+                      subtitle: const Text('برای استفاده، نسخه پرو را بخرید'),
+                      trailing: TextButton(
+                        onPressed: _showProDialog,
+                        child: const Text('خرید'),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 16),
                 const Text(
                   'پرداخت درون‌برنامه‌ای',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'کلید RSA (برای اتصال به کافه‌بازار)',
+                  'کلید RSA (برای اتصال به کافه‌بازار/مایکت)',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
@@ -965,6 +1136,7 @@ jobs:
                   onChanged: (v) {
                     _app!.rsaKey = v;
                   },
+                  enabled: proStatus.isPro,
                   maxLines: 5,
                   decoration: InputDecoration(
                     hintText: 'کلید RSA را اینجا وارد کنید',
@@ -972,16 +1144,22 @@ jobs:
                       borderRadius: BorderRadius.circular(12),
                     ),
                     prefixIcon: const Icon(Icons.vpn_key),
+                    suffixIcon: proStatus.isPro
+                        ? null
+                        : const Icon(Icons.lock, color: Colors.grey),
                   ),
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
-                  onPressed: () {
-                    _saveApp();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('کلید RSA ذخیره شد! ✅')),
-                    );
-                  },
+                  onPressed: proStatus.isPro
+                      ? () {
+                          _saveApp();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('کلید RSA ذخیره شد! ✅')),
+                          );
+                        }
+                      : _showProDialog,
                   icon: const Icon(Icons.save),
                   label: const Text('ذخیره کلید'),
                   style: ElevatedButton.styleFrom(
@@ -1672,11 +1850,14 @@ jobs:
         DART_EOF
 
     - name: Build APK (Release)
-      run: flutter build apk --release
+      run: |
+        # ساخت با فروشگاه انتخابی
+        STORE="${{ github.event.inputs.store || 'bazaar' }}"
+        flutter build apk --release --dart-define=IRAN_IAP_STORE=$STORE
 
     - name: Upload APK as Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: appland-apk
+        name: appland-apk-${{ github.event.inputs.store || 'bazaar' }}
         path: build/app/outputs/flutter-apk/app-release.apk
         retention-days: 7
