@@ -32,6 +32,8 @@ jobs:
           find . -maxdepth 1 ! -name '.git' ! -name '.' -exec rm -rf {} \;
           flutter create --org ir.appland --project-name jalili .
           cp /tmp/appland_source/main.dart lib/main.dart
+          echo "=== محتوای main.dart ==="
+          head -5 lib/main.dart
 
       - name: Set up MainActivity
         run: |
@@ -50,6 +52,7 @@ jobs:
             -storepass appland123 \
             -keypass appland123 \
             -dname "CN=AppLand, OU=AppLand, O=AppLand, L=Tehran, ST=Tehran, C=IR"
+          echo "=== Keystore ساخته شد ==="
           ls -la android/app/appland.jks
 
       - name: Install dependencies
@@ -59,7 +62,7 @@ jobs:
           flutter pub add url_launcher
           flutter pub add image_picker
 
-      - name: Build unsigned APK
+      - name: Build APK
         run: |
           flutter build apk --release
           ls -la build/app/outputs/flutter-apk/
@@ -68,11 +71,11 @@ jobs:
         run: |
           APK_DIR=build/app/outputs/flutter-apk
           APK=$APK_DIR/app-release.apk
-          
+
           zip -d $APK "META-INF/*.SF" || true
           zip -d $APK "META-INF/*.DSA" || true
           zip -d $APK "META-INF/*.RSA" || true
-          
+
           jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 \
             -keystore android/app/appland.jks \
             -storepass appland123 \
@@ -85,7 +88,7 @@ jobs:
           echo "=== بررسی امضای APK ==="
           keytool -printcert -jarfile build/app/outputs/flutter-apk/app-release.apk || true
 
-      - name: Upload APK
+      - name: Upload APK as Artifact
         uses: actions/upload-artifact@v4
         with:
           name: appland-apk
