@@ -433,8 +433,8 @@ class HomePage extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () => _openRubika(
-                      context, 'https://rubika.ir/Appland_ir'),
+                  onPressed: () =>
+                      _openRubika(context, 'https://rubika.ir/Appland_ir'),
                   icon: const Icon(Icons.school, size: 28),
                   label: const Text(
                     'مرکز آموزش ساخت اپ',
@@ -461,8 +461,8 @@ class HomePage extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () => _openRubika(
-                      context, 'https://rubika.ir/support_1i'),
+                  onPressed: () =>
+                      _openRubika(context, 'https://rubika.ir/support_1i'),
                   icon: const Icon(Icons.support_agent, size: 28),
                   label: const Text(
                     'پشتیبانی',
@@ -531,9 +531,8 @@ class _MyAppsPageState extends State<MyAppsPage> {
     final appsJson = prefs.getStringList('my_apps') ?? [];
     if (mounted) {
       setState(() {
-        _apps = appsJson
-            .map((e) => MyAppModel.fromJson(jsonDecode(e)))
-            .toList();
+        _apps =
+            appsJson.map((e) => MyAppModel.fromJson(jsonDecode(e))).toList();
         _isLoading = false;
       });
     }
@@ -658,7 +657,7 @@ class _MyAppsPageState extends State<MyAppsPage> {
   }
 }
 
-// ==================== صفحه ویرایش اپ (با ۴ تب) ====================
+// ==================== صفحه ویرایش اپ ====================
 class AppEditorPage extends StatefulWidget {
   final int appIndex;
 
@@ -735,7 +734,6 @@ class _AppEditorPageState extends State<AppEditorPage> {
     );
   }
 
-  // ========== تب ساخت ==========
   Widget _buildTab() {
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -908,7 +906,6 @@ class _AppEditorPageState extends State<AppEditorPage> {
     );
   }
 
-  // ========== تب تبلیغات ==========
   Widget _adsTab() {
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -999,7 +996,6 @@ class _AppEditorPageState extends State<AppEditorPage> {
     );
   }
 
-  // ========== تب پرداخت ==========
   Widget _paymentTab() {
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -1052,8 +1048,7 @@ class _AppEditorPageState extends State<AppEditorPage> {
               ? () {
                   _saveApp();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('کلید RSA ذخیره شد! ✅')),
+                    const SnackBar(content: Text('کلید RSA ذخیره شد! ✅')),
                   );
                 }
               : _showProDialog,
@@ -1072,7 +1067,6 @@ class _AppEditorPageState extends State<AppEditorPage> {
     );
   }
 
-  // ========== تب تنظیمات ==========
   Widget _settingsTab() {
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -1114,9 +1108,8 @@ class _AppEditorPageState extends State<AppEditorPage> {
         ListTile(
           leading: const Icon(Icons.wallpaper, color: Color(0xFF6A11CB)),
           title: const Text('Splash Screen'),
-          subtitle: Text(_app!.splashText.isEmpty
-              ? 'تنظیم نشده'
-              : _app!.splashText),
+          subtitle: Text(
+              _app!.splashText.isEmpty ? 'تنظیم نشده' : _app!.splashText),
           trailing: const Icon(Icons.arrow_forward_ios, size: 16),
           onTap: _showSplashDialog,
         ),
