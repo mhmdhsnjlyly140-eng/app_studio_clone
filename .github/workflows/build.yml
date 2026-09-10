@@ -64,51 +64,19 @@ jobs:
     - name: Configure Signing
       run: |
         GRADLE_FILE=android/app/build.gradle.kts
-        python3 << 'PYTHON_EOF'
-        import re
 
-        gradle_file = 'android/app/build.gradle.kts'
+        # ۱. اضافه کردن importها به ابتدای فایل
+        sed -i '1i import java.util.Properties\nimport java.io.FileInputStream' $GRADLE_FILE
 
-        with open(gradle_file, 'r') as f:
-            content = f.read()
+        # ۲. اضافه کردن signingConfigs بعد از خط "android {"
+        awk '/^android \{/{print; print "    signingConfigs {"; print "        create(\"release\") {"; print "            val keystoreProperties = Properties()"; print "            val keystorePropertiesFile = rootProject.file(\"key.properties\")"; print "            if (keystorePropertiesFile.exists()) {"; print "                keystoreProperties.load(FileInputStream(keystorePropertiesFile))"; print "            }"; print "            keyAlias = keystoreProperties[\"keyAlias\"] as String"; print "            keyPassword = keystoreProperties[\"keyPassword\"] as String"; print "            storeFile = file(keystoreProperties[\"storeFile\"] as String)"; print "            storePassword = keystoreProperties[\"storePassword\"] as String"; print "        }"; print "    }"; next}1' $GRADLE_FILE > /tmp/gradle_temp.kts && mv /tmp/gradle_temp.kts $GRADLE_FILE
 
-        # اضافه کردن import
-        if 'java.util.Properties' not in content:
-            content = content.replace(
-                'import io.flutter.embedding.android.FlutterActivity',
-                '''import io.flutter.embedding.android.FlutterActivity
-        import java.util.Properties
-        import java.io.FileInputStream'''
-            )
+        # ۳. تغییر buildTypes برای استفاده از signingConfigs
+        sed -i 's|buildTypes {|buildTypes {\n        release {\n            signingConfig = signingConfigs.getByName("release")\n        }|' $GRADLE_FILE
 
-        # اضافه کردن signingConfigs بعد از android {
-        signing_block = '''
-            signingConfigs {
-                create("release") {
-                    val keystoreProperties = Properties()
-                    val keystorePropertiesFile = rootProject.file("key.properties")
-                    if (keystorePropertiesFile.exists()) {
-                        keystoreProperties.load(FileInputStream(keystorePropertiesFile))
-                    }
-                    keyAlias = keystoreProperties["keyAlias"] as String
-                    keyPassword = keystoreProperties["keyPassword"] as String
-                    storeFile = file(keystoreProperties["storeFile"] as String)
-                    storePassword = keystoreProperties["storePassword"] as String
-                }
-            }
-        '''
-        content = content.replace('android {', 'android {' + signing_block, 1)
-
-        # تغییر buildTypes
-        buildtypes_block = '''buildTypes {
-                release {
-                    signingConfig = signingConfigs.getByName("release")
-                }'''
-        content = content.replace('buildTypes {', buildtypes_block, 1)
-
-        with open(gradle_file, 'w') as f:
-            f.write(content)
-        PYTHON_EOF
+        # ۴. نمایش فایل نهایی برای دیباگ
+        echo "=== build.gradle.kts نهایی ==="
+        head -50 $GRADLE_FILE
 
     - name: Install dependencies
       run: |
