@@ -565,7 +565,7 @@ jobs:
           flutter pub add url_launcher
           flutter pub add image_picker
       - name: Build APK
-        run: flutter build apk --release
+        run: flutter build apk --release --target-platform android-arm
       - name: Decode Keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/appland.jks
