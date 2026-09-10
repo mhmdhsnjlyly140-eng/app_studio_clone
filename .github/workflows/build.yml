@@ -22,142 +22,36 @@ jobs:
           flutter-version: '3.32.7'
           channel: 'stable'
 
-      - name: Create Flutter project
+      - name: Save main.dart and create Flutter project
         run: |
+          mkdir -p /tmp/appland_source
+          cp lib/main.dart /tmp/appland_source/main.dart
           rm -rf lib android ios web test .dart_tool build pubspec.yaml pubspec.lock analysis_options.yaml .metadata
           flutter create --org ir.appland --project-name jalili --platforms android .
+          cp /tmp/appland_source/main.dart lib/main.dart
+          echo "=== محتوای main.dart ==="
+          head -20 lib/main.dart
 
-      - name: Write main.dart
+      - name: Set up MainActivity
         run: |
-          cat > lib/main.dart << 'DART_END'
-          import 'package:flutter/material.dart';
-
-          void main() => runApp(const AppLand());
-
-          class AppLand extends StatelessWidget {
-            const AppLand({super.key});
-            @override
-            Widget build(BuildContext context) {
-              return MaterialApp(
-                debugShowCheckedModeBanner: false,
-                title: 'اپ‌لند',
-                theme: ThemeData(primarySwatch: Colors.deepPurple, useMaterial3: true),
-                home: const SplashScreen(),
-              );
-            }
-          }
-
-          class SplashScreen extends StatefulWidget {
-            const SplashScreen({super.key});
-            @override
-            State<SplashScreen> createState() => _SplashScreenState();
-          }
-          class _SplashScreenState extends State<SplashScreen> {
-            @override
-            void initState() {
-              super.initState();
-              Future.delayed(const Duration(seconds: 3), () {
-                if (mounted) Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const MainScreen()));
-              });
-            }
-            @override
-            Widget build(BuildContext context) {
-              return Scaffold(body: Container(
-                decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF6A11CB), Color(0xFF2575FC)])),
-                child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Container(width: 140, height: 140, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(35)), child: const Icon(Icons.apps, size: 80, color: Color(0xFF6A11CB))),
-                  const SizedBox(height: 30),
-                  const Text('اپ‌لند', style: TextStyle(fontSize: 42, fontWeight: FontWeight.bold, color: Colors.white)),
-                  const SizedBox(height: 10),
-                  const Text('سرزمین اپ‌های تو', style: TextStyle(fontSize: 16, color: Colors.white70)),
-                ])),
-              ));
-            }
-          }
-
-          class MainScreen extends StatefulWidget {
-            const MainScreen({super.key});
-            @override
-            State<MainScreen> createState() => _MainScreenState();
-          }
-          class _MainScreenState extends State<MainScreen> {
-            int _index = 0;
-            @override
-            Widget build(BuildContext context) {
-              final pages = [const HomePage(), const MyAppsPage(), const CreateAppPage(), const SettingsPage()];
-              return Scaffold(
-                body: pages[_index],
-                bottomNavigationBar: NavigationBar(
-                  selectedIndex: _index,
-                  onDestinationSelected: (i) => setState(() => _index = i),
-                  destinations: const [
-                    NavigationDestination(icon: Icon(Icons.home), label: 'خانه'),
-                    NavigationDestination(icon: Icon(Icons.apps), label: 'اپ‌های من'),
-                    NavigationDestination(icon: Icon(Icons.add_circle), label: 'ساخت اپ'),
-                    NavigationDestination(icon: Icon(Icons.settings), label: 'تنظیمات'),
-                  ],
-                ),
-              );
-            }
-          }
-
-          class HomePage extends StatelessWidget {
-            const HomePage({super.key});
-            @override
-            Widget build(BuildContext context) {
-              return Container(
-                decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF6A11CB), Color(0xFF2575FC)])),
-                child: SafeArea(child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Container(width: 120, height: 120, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(30)), child: const Icon(Icons.apps, size: 70, color: Color(0xFF6A11CB))),
-                  const SizedBox(height: 30),
-                  const Text('اپ‌لند', style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: Colors.white)),
-                  const SizedBox(height: 10),
-                  const Text('سرزمین اپ‌های تو', style: TextStyle(fontSize: 18, color: Colors.white70)),
-                  const SizedBox(height: 40),
-                  const Text('نسخه ۱.۰.۰', style: TextStyle(fontSize: 14, color: Colors.white54)),
-                ]))),
-              );
-            }
-          }
-
-          class MyAppsPage extends StatelessWidget {
-            const MyAppsPage({super.key});
-            @override
-            Widget build(BuildContext context) {
-              return Scaffold(appBar: AppBar(title: const Text('اپ‌های من'), backgroundColor: const Color(0xFF6A11CB), foregroundColor: Colors.white),
-                body: const Center(child: Text('هنوز اپی نساخته‌اید', style: TextStyle(fontSize: 18, color: Colors.grey))));
-            }
-          }
-
-          class CreateAppPage extends StatelessWidget {
-            const CreateAppPage({super.key});
-            @override
-            Widget build(BuildContext context) {
-              return Scaffold(appBar: AppBar(title: const Text('ساخت اپ جدید'), backgroundColor: const Color(0xFF6A11CB), foregroundColor: Colors.white),
-                body: const Center(child: Text('فرم ساخت اپ', style: TextStyle(fontSize: 18))));
-            }
-          }
-
-          class SettingsPage extends StatelessWidget {
-            const SettingsPage({super.key});
-            @override
-            Widget build(BuildContext context) {
-              return Scaffold(appBar: AppBar(title: const Text('تنظیمات'), backgroundColor: const Color(0xFF6A11CB), foregroundColor: Colors.white),
-                body: const Center(child: Text('تنظیمات', style: TextStyle(fontSize: 18))));
-            }
-          }
-          DART_END
+          mkdir -p android/app/src/main/kotlin/ir/appland/jalili
+          cat > android/app/src/main/kotlin/ir/appland/jalili/MainActivity.kt << 'KOTLIN_EOF'
+          package ir.appland.jalili
+          import io.flutter.embedding.android.FlutterFragmentActivity
+          class MainActivity: FlutterFragmentActivity()
+          KOTLIN_EOF
 
       - name: Install deps
-        run: flutter pub get
+        run: |
+          flutter pub get
+          flutter pub add shared_preferences
+          flutter pub add url_launcher
+          flutter pub add image_picker
 
       - name: Decode Keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/appland.jks
-          echo "=== Keystore info ==="
-          keytool -list -v -keystore android/app/appland.jks -storepass ${{ secrets.KEYSTORE_PASSWORD }} || true
-          echo "=== Alias check ==="
-          keytool -list -keystore android/app/appland.jks -storepass ${{ secrets.KEYSTORE_PASSWORD }} -alias ${{ secrets.KEY_ALIAS }} || echo "ALIAS NOT FOUND!"
+          ls -la android/app/appland.jks
 
       - name: Build APK
         run: flutter build apk --release
