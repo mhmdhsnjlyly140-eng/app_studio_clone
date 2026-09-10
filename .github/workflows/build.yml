@@ -34,63 +34,14 @@ jobs:
       run: |
         flutter pub get
         flutter pub add shared_preferences
-        flutter pub add flutter_launcher_icons
-        flutter pub add flutter_native_splash
-
-    - name: Create App Icon
-      run: |
-        mkdir -p assets
-        cat > assets/icon.svg << 'SVG_EOF'
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-          <defs>
-            <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" style="stop-color:#6A11CB"/>
-              <stop offset="100%" style="stop-color:#2575FC"/>
-            </linearGradient>
-          </defs>
-          <rect width="512" height="512" rx="100" fill="url(#grad)"/>
-          <rect x="140" y="140" width="80" height="80" rx="15" fill="white"/>
-          <rect x="230" y="140" width="80" height="80" rx="15" fill="white"/>
-          <rect x="320" y="140" width="80" height="80" rx="15" fill="white"/>
-          <rect x="140" y="230" width="80" height="80" rx="15" fill="white"/>
-          <rect x="230" y="230" width="80" height="80" rx="15" fill="white"/>
-          <rect x="320" y="230" width="80" height="80" rx="15" fill="white"/>
-          <rect x="140" y="320" width="80" height="80" rx="15" fill="white"/>
-          <rect x="230" y="320" width="80" height="80" rx="15" fill="white"/>
-          <rect x="320" y="320" width="80" height="80" rx="15" fill="white"/>
-        </svg>
-        SVG_EOF
-
-    - name: Configure App Icon
-      run: |
-        cat > flutter_launcher_icons.yaml << 'ICON_EOF'
-        flutter_launcher_icons:
-          android: "launcher_icon"
-          ios: true
-          image_path: "assets/icon.svg"
-          min_sdk_android: 21
-        ICON_EOF
-        dart run flutter_launcher_icons || true
-
-    - name: Configure Splash Screen
-      run: |
-        cat > flutter_native_splash.yaml << 'SPLASH_EOF'
-        flutter_native_splash:
-          color: "#6A11CB"
-          image: "assets/icon.svg"
-          android: true
-          ios: true
-          android_12:
-            color: "#6A11CB"
-            image: "assets/icon.svg"
-        SPLASH_EOF
-        dart run flutter_native_splash:create || true
+        flutter pub add url_launcher
 
     - name: Write AppLand main.dart
       run: |
         cat > lib/main.dart << 'DART_EOF'
         import 'package:flutter/material.dart';
         import 'package:shared_preferences/shared_preferences.dart';
+        import 'package:url_launcher/url_launcher.dart';
         import 'dart:convert';
 
         void main() {
@@ -235,10 +186,16 @@ jobs:
         class _MainScreenState extends State<MainScreen> {
           int _currentIndex = 0;
 
+          void _goToCreateApp() {
+            setState(() {
+              _currentIndex = 2;
+            });
+          }
+
           @override
           Widget build(BuildContext context) {
             final pages = [
-              const HomePage(),
+              HomePage(onStartPressed: _goToCreateApp),
               const MyAppsPage(),
               CreateAppPage(
                 onAppCreated: () {
@@ -291,29 +248,46 @@ jobs:
           final String name;
           final String welcome;
           final int colorValue;
+          final String packageName;
+          final String iconName;
 
           MyAppModel({
             required this.name,
             required this.welcome,
             required this.colorValue,
+            required this.packageName,
+            required this.iconName,
           });
 
           Map<String, dynamic> toJson() => {
                 'name': name,
                 'welcome': welcome,
                 'color': colorValue,
+                'packageName': packageName,
+                'iconName': iconName,
               };
 
           factory MyAppModel.fromJson(Map<String, dynamic> json) => MyAppModel(
-                name: json['name'],
-                welcome: json['welcome'],
-                colorValue: json['color'],
+                name: json['name'] ?? '',
+                welcome: json['welcome'] ?? '',
+                colorValue: json['color'] ?? 0xFF6A11CB,
+                packageName: json['packageName'] ?? '',
+                iconName: json['iconName'] ?? 'apps',
               );
         }
 
         // ==================== صفحه خانه ====================
         class HomePage extends StatelessWidget {
-          const HomePage({super.key});
+          final VoidCallback onStartPressed;
+
+          const HomePage({super.key, required this.onStartPressed});
+
+          Future<void> _openRubika(String url) async {
+            final uri = Uri.parse(url);
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            }
+          }
 
           @override
           Widget build(BuildContext context) {
@@ -326,10 +300,11 @@ jobs:
                 ),
               ),
               child: SafeArea(
-                child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      const SizedBox(height: 40),
                       Container(
                         width: 120,
                         height: 120,
@@ -368,35 +343,92 @@ jobs:
                           color: Colors.white70,
                         ),
                       ),
-                      const SizedBox(height: 50),
-                      ElevatedButton(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('به اپ‌لند خوش آمدید! 🚀'),
+                      const SizedBox(height: 40),
+
+                      // دکمه شروع
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: onStartPressed,
+                          icon: const Icon(Icons.play_arrow, size: 28),
+                          label: const Text(
+                            'شروع کنید',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
                             ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF6A11CB),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 50,
-                            vertical: 18,
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                        ),
-                        child: const Text(
-                          'شروع کنید',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: const Color(0xFF6A11CB),
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
+
+                      // دکمه مرکز آموزش (روبیکا)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () =>
+                              _openRubika('https://rubika.ir/Appland_ir'),
+                          icon: const Icon(Icons.school, size: 28),
+                          label: const Text(
+                            'مرکز آموزش ساخت اپ',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white.withOpacity(0.2),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              side: const BorderSide(
+                                color: Colors.white,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // دکمه پشتیبانی (روبیکا)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () =>
+                              _openRubika('https://rubika.ir/support_1i'),
+                          icon: const Icon(Icons.support_agent, size: 28),
+                          label: const Text(
+                            'پشتیبانی',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white.withOpacity(0.2),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              side: const BorderSide(
+                                color: Colors.white,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 30),
                       const Text(
                         'نسخه ۱.۰.۰',
                         style: TextStyle(
@@ -404,6 +436,7 @@ jobs:
                           color: Colors.white54,
                         ),
                       ),
+                      const SizedBox(height: 20),
                     ],
                   ),
                 ),
@@ -449,44 +482,11 @@ jobs:
             _loadApps();
           }
 
-          void _showBuildDialog(MyAppModel app) {
-            showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('ساخت APK'),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.build, size: 60, color: Color(0xFF6A11CB)),
-                    const SizedBox(height: 16),
-                    Text('آیا می‌خواهید APK اپ «${app.name}» ساخته شود؟'),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'این فرآیند از طریق GitHub Actions انجام می‌شود.',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('لغو'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('درخواست ساخت APK ارسال شد! 🚀'),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6A11CB),
-                    ),
-                    child: const Text('بساز'),
-                  ),
-                ],
+          void _openUnderDevelopment() {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const UnderDevelopmentPage(),
               ),
             );
           }
@@ -559,7 +559,7 @@ jobs:
                                     IconButton(
                                       icon: const Icon(Icons.build,
                                           color: Color(0xFF6A11CB)),
-                                      onPressed: () => _showBuildDialog(app),
+                                      onPressed: _openUnderDevelopment,
                                     ),
                                     IconButton(
                                       icon: const Icon(Icons.delete,
@@ -572,6 +572,81 @@ jobs:
                             );
                           },
                         ),
+            );
+          }
+        }
+
+        // ==================== صفحه در حال توسعه ====================
+        class UnderDevelopmentPage extends StatelessWidget {
+          const UnderDevelopmentPage({super.key});
+
+          @override
+          Widget build(BuildContext context) {
+            return Scaffold(
+              appBar: AppBar(
+                title: const Text('ساخت APK'),
+                backgroundColor: const Color(0xFF6A11CB),
+                foregroundColor: Colors.white,
+              ),
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6A11CB).withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.construction,
+                        size: 70,
+                        color: Color(0xFF6A11CB),
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    const Text(
+                      'در حال توسعه',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF6A11CB),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 40),
+                      child: Text(
+                        'این قابلیت به‌زودی اضافه می‌شود\nو می‌توانید از داخل اپ‌لند\nAPK بسازید! 🚀',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey,
+                          height: 1.8,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    ElevatedButton.icon(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.arrow_back),
+                      label: const Text('بازگشت'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6A11CB),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 30,
+                          vertical: 14,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             );
           }
         }
@@ -589,6 +664,8 @@ jobs:
         class _CreateAppPageState extends State<CreateAppPage> {
           final _appNameController = TextEditingController();
           final _welcomeController = TextEditingController();
+          final _packageNameController = TextEditingController();
+          final _iconNameController = TextEditingController();
           Color _selectedColor = const Color(0xFF6A11CB);
           bool _isLoading = false;
 
@@ -605,6 +682,8 @@ jobs:
           void dispose() {
             _appNameController.dispose();
             _welcomeController.dispose();
+            _packageNameController.dispose();
+            _iconNameController.dispose();
             super.dispose();
           }
 
@@ -612,6 +691,13 @@ jobs:
             if (_appNameController.text.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('لطفاً نام اپ را وارد کنید')),
+              );
+              return;
+            }
+
+            if (_packageNameController.text.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('لطفاً نام پکیج را وارد کنید')),
               );
               return;
             }
@@ -629,6 +715,10 @@ jobs:
                   ? 'به ${_appNameController.text} خوش آمدید'
                   : _welcomeController.text,
               colorValue: _selectedColor.value,
+              packageName: _packageNameController.text,
+              iconName: _iconNameController.text.isEmpty
+                  ? 'apps'
+                  : _iconNameController.text,
             );
 
             appsJson.add(jsonEncode(newApp.toJson()));
@@ -646,6 +736,8 @@ jobs:
               );
               _appNameController.clear();
               _welcomeController.clear();
+              _packageNameController.clear();
+              _iconNameController.clear();
               widget.onAppCreated();
             }
           }
@@ -694,6 +786,51 @@ jobs:
                           borderRadius: BorderRadius.circular(12),
                         ),
                         prefixIcon: const Icon(Icons.message),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'نام پکیج (Package Name)',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _packageNameController,
+                      decoration: InputDecoration(
+                        hintText: 'مثلاً: com.example.myapp',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        prefixIcon: const Icon(Icons.code),
+                        helperText: 'این نام بعد از ساخت اپ قابل تغییر نیست',
+                        helperStyle: const TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'آیکون اپ',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _iconNameController,
+                      decoration: InputDecoration(
+                        hintText: 'مثلاً: shopping_cart',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        prefixIcon: const Icon(Icons.image),
+                        helperText:
+                            'نام آیکون از سایت material icons (اختیاری)',
+                        helperStyle: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -762,6 +899,7 @@ jobs:
                               ),
                             ),
                     ),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
