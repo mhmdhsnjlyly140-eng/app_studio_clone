@@ -31,11 +31,6 @@ jobs:
         run: |
           cat > lib/main.dart << 'DART_END'
           import 'package:flutter/material.dart';
-          import 'package:shared_preferences/shared_preferences.dart';
-          import 'package:url_launcher/url_launcher.dart';
-          import 'package:image_picker/image_picker.dart';
-          import 'dart:convert';
-          import 'dart:io';
 
           void main() => runApp(const AppLand());
 
@@ -156,25 +151,29 @@ jobs:
       - name: Install deps
         run: |
           flutter pub get
-          flutter pub add shared_preferences
-          flutter pub add url_launcher
-          flutter pub add image_picker
 
-      - name: Generate Keystore
+      - name: Decode Keystore
         run: |
-          keytool -genkey -v -keystore android/app/appland.jks -keyalg RSA -keysize 2048 -validity 10000 -alias appland -storepass appland123 -keypass appland123 -dname "CN=AppLand, OU=AppLand, O=AppLand, L=Tehran, ST=Tehran, C=IR"
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/appland.jks
+          ls -la android/app/appland.jks
 
-      - name: Build
+      - name: Build APK
         run: flutter build apk --release
 
-      - name: Sign
+      - name: Sign APK
         run: |
           cd build/app/outputs/flutter-apk
           zip -d app-release.apk "META-INF/*.SF" "META-INF/*.DSA" "META-INF/*.RSA" || true
-          jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore ../../../../android/app/appland.jks -storepass appland123 -keypass appland123 app-release.apk appland
+          jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 \
+            -keystore ../../../../android/app/appland.jks \
+            -storepass ${{ secrets.KEYSTORE_PASSWORD }} \
+            -keypass ${{ secrets.KEY_ALIAS_PASSWORD }} \
+            app-release.apk \
+            ${{ secrets.KEY_ALIAS }}
 
-      - name: Verify
-        run: keytool -printcert -jarfile build/app/outputs/flutter-apk/app-release.apk
+      - name: Verify Signature
+        run: |
+          keytool -printcert -jarfile build/app/outputs/flutter-apk/app-release.apk
 
       - uses: actions/upload-artifact@v4
         with:
