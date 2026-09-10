@@ -48,7 +48,6 @@ jobs:
       run: |
         MANIFEST=android/app/src/main/AndroidManifest.xml
         sed -i 's|<application|<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>\n    <application|' $MANIFEST || true
-        sed -i 's|</application>|    <queries>\n        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="https" />\n        </intent>\n        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="http" />\n        </intent>\n    </queries>\n    </application>|' $MANIFEST || true
 
     - name: Write AppLand main.dart
       run: |
