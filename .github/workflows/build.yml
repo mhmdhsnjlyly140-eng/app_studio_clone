@@ -31,7 +31,7 @@ jobs:
     - name: Set up Flutter
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: '3.29.0'
+        flutter-version: '3.32.7'
         channel: 'stable'
 
     - name: Create Flutter project
@@ -48,12 +48,10 @@ jobs:
 
     - name: Add JitPack repository
       run: |
-        # اضافه کردن JitPack به build.gradle
         sed -i 's|repositories {|repositories {\n        maven { url "https://jitpack.io" }|' android/build.gradle.kts || true
 
     - name: Set up MainActivity
       run: |
-        # تغییر MainActivity برای پشتیبانی از پرداخت
         cat > android/app/src/main/kotlin/com/appland/appland/MainActivity.kt << 'KOTLIN_EOF'
         package com.appland.appland
 
@@ -932,20 +930,16 @@ jobs:
 
           Future<void> _purchasePro() async {
             try {
-              // TODO: شناسه کالا را با شناسه واقعی خود جایگزین کنید
               const productId = 'appland_pro';
 
-              // برای کافه‌بازار
-              // final iap = IranIap();
-              // await iap.initialize(store: Store.bazaar);
-
-              // برای مایکت
-              // final iap = IranIap();
+              final iap = IranIap();
+              // برای کافه‌بازار:
+              await iap.initialize(store: Store.bazaar);
+              // برای مایکت:
               // await iap.initialize(store: Store.myket, rsaKey: 'YOUR_RSA_KEY');
 
-              // await iap.purchase(productId);
+              await iap.purchase(productId);
 
-              // بعد از موفقیت:
               await proStatus.setPro(true);
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -1851,7 +1845,6 @@ jobs:
 
     - name: Build APK (Release)
       run: |
-        # ساخت با فروشگاه انتخابی
         STORE="${{ github.event.inputs.store || 'bazaar' }}"
         flutter build apk --release --dart-define=IRAN_IAP_STORE=$STORE
 
