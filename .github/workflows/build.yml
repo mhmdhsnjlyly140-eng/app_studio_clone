@@ -27,24 +27,11 @@ jobs:
 
       - name: Save main.dart and create Flutter project
         run: |
-          # ذخیره کد main.dart قبل از پاک کردن
           mkdir -p /tmp/appland_source
           cp lib/main.dart /tmp/appland_source/main.dart
-          echo "=== main.dart ذخیره شد ==="
-          head -5 /tmp/appland_source/main.dart
-
-          # پاک کردن همه چیز به جز .git
           find . -maxdepth 1 ! -name '.git' ! -name '.' -exec rm -rf {} \;
-
-          # ساخت پروژه فلاتر
           flutter create --org ir.appland --project-name jalili .
-
-          # برگرداندن کد main.dart
           cp /tmp/appland_source/main.dart lib/main.dart
-
-          # چک کردن محتوا
-          echo "=== محتوای main.dart ==="
-          head -10 lib/main.dart
 
       - name: Set up MainActivity
         run: |
@@ -55,12 +42,15 @@ jobs:
           class MainActivity: FlutterFragmentActivity()
           KOTLIN_EOF
 
-      - name: Decode Keystore
+      - name: Generate Keystore
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
-          ls -la android/app/keystore.jks
-          echo "=== Keystore info ==="
-          keytool -list -keystore android/app/keystore.jks -storepass ${{ secrets.KEYSTORE_PASSWORD }} || true
+          keytool -genkey -v -keystore android/app/appland.jks \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -alias appland \
+            -storepass appland123 \
+            -keypass appland123 \
+            -dname "CN=AppLand, OU=AppLand, O=AppLand, L=Tehran, ST=Tehran, C=IR"
+          ls -la android/app/appland.jks
 
       - name: Install dependencies
         run: |
@@ -69,7 +59,7 @@ jobs:
           flutter pub add url_launcher
           flutter pub add image_picker
 
-      - name: Build APK
+      - name: Build unsigned APK
         run: |
           flutter build apk --release
           ls -la build/app/outputs/flutter-apk/
@@ -78,26 +68,24 @@ jobs:
         run: |
           APK_DIR=build/app/outputs/flutter-apk
           APK=$APK_DIR/app-release.apk
-
-          # حذف امضای دیباگ
+          
           zip -d $APK "META-INF/*.SF" || true
           zip -d $APK "META-INF/*.DSA" || true
           zip -d $APK "META-INF/*.RSA" || true
-
-          # امضا با کلید اختصاصی
+          
           jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 \
-            -keystore android/app/keystore.jks \
-            -storepass ${{ secrets.KEYSTORE_PASSWORD }} \
-            -keypass ${{ secrets.KEYSTORE_PASSWORD }} \
+            -keystore android/app/appland.jks \
+            -storepass appland123 \
+            -keypass appland123 \
             $APK \
-            ${{ secrets.KEY_ALIAS }}
+            appland
 
       - name: Verify APK Signature
         run: |
           echo "=== بررسی امضای APK ==="
           keytool -printcert -jarfile build/app/outputs/flutter-apk/app-release.apk || true
 
-      - name: Upload APK as Artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: appland-apk
