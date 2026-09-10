@@ -14,7 +14,7 @@ jobs:
           java-version: '17'
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.29.0'
+          flutter-version: '3.32.7'
           channel: 'stable'
       - name: Create Flutter project
         run: |
@@ -100,15 +100,14 @@ jobs:
       - name: Decode Keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/appland.jks
-      - name: Sign APK
+      - name: Sign with apksigner
         run: |
           cd build/app/outputs/flutter-apk
-          zip -d app-release.apk "META-INF/*.SF" "META-INF/*.DSA" "META-INF/*.RSA" || true
-          jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore ../../../../android/app/appland.jks -storepass ${{ secrets.KEYSTORE_PASSWORD }} -keypass ${{ secrets.KEY_ALIAS_PASSWORD }} app-release.apk ${{ secrets.KEY_ALIAS }}
-          $ANDROID_HOME/build-tools/34.0.0/zipalign -v 4 app-release.apk app-release-aligned.apk
-          mv app-release-aligned.apk app-release.apk
+          $ANDROID_HOME/build-tools/34.0.0/apksigner sign --ks ../../../../android/app/appland.jks --ks-pass pass:${{ secrets.KEYSTORE_PASSWORD }} --key-pass pass:${{ secrets.KEY_ALIAS_PASSWORD }} --ks-key-alias ${{ secrets.KEY_ALIAS }} --out app-release-signed.apk app-release.apk
+          mv app-release-signed.apk app-release.apk
       - name: Verify
-        run: keytool -printcert -jarfile build/app/outputs/flutter-apk/app-release.apk
+        run: |
+          $ANDROID_HOME/build-tools/34.0.0/apksigner verify --print-certs build/app/outputs/flutter-apk/app-release.apk
       - uses: actions/upload-artifact@v4
         with:
           name: appland-apk
