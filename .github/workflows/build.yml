@@ -27,22 +27,15 @@ jobs:
 
     - name: Create Flutter project
       run: |
+        # ذخیره کد اپ‌لند قبل از پاک شدن
+        cp lib/main.dart /tmp/main_backup.dart 2>/dev/null || true
         find . -maxdepth 1 ! -name '.git' ! -name '.' -exec rm -rf {} \;
-        flutter create --org com.example --project-name my_app .
+        flutter create --org com.appland --project-name appland .
+        # برگرداندن کد اپ‌لند
+        cp /tmp/main_backup.dart lib/main.dart 2>/dev/null || true
 
     - name: Install dependencies
       run: flutter pub get
-
-    - name: Decode Keystore
-      run: |
-        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > keystore.jks
-
-    - name: Create key.properties
-      run: |
-        echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
-        echo "keyPassword=${{ secrets.KEY_ALIAS_PASSWORD }}" >> android/key.properties
-        echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
-        echo "storeFile=../keystore.jks" >> android/key.properties
 
     - name: Build APK (Release)
       run: flutter build apk --release
@@ -50,6 +43,6 @@ jobs:
     - name: Upload APK as Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: my-signed-app
+        name: appland-apk
         path: build/app/outputs/flutter-apk/app-release.apk
         retention-days: 7
