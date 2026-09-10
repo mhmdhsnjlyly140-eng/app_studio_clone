@@ -27,6 +27,8 @@ jobs:
           sed -i 's|applicationId = "ir.appland.appland"|applicationId = "ir.appland.jalili"|' android/app/build.gradle.kts || true
           sed -i 's|namespace = "ir.appland.appland"|namespace = "ir.appland.jalili"|' android/app/build.gradle.kts || true
           sed -i 's|android:label="appland"|android:label="اپ‌لند"|' android/app/src/main/AndroidManifest.xml || true
+          sed -i 's|minSdk = flutter.minSdkVersion|minSdk = 24|' android/app/build.gradle.kts || true
+          sed -i 's|minSdkVersion flutter.minSdkVersion|minSdkVersion 24|' android/app/build.gradle.kts || true
 
       - name: Apply Custom Icon
         run: |
@@ -45,8 +47,6 @@ jobs:
           import 'package:shared_preferences/shared_preferences.dart';
           import 'package:url_launcher/url_launcher.dart';
           import 'package:image_picker/image_picker.dart';
-          import 'package:video_player/video_player.dart';
-          import 'package:just_audio/just_audio.dart';
           import 'dart:convert';
           import 'dart:io';
 
@@ -299,7 +299,7 @@ jobs:
             }
             Future<void> _support(int i) async {
               final app = _apps[i];
-              final msg = await showDialog<String>(context: context, builder: (c) {
+              await showDialog<String>(context: context, builder: (c) {
                 final ctrl = TextEditingController();
                 return AlertDialog(
                   title: const Text('پشتیبانی از پروژه'),
@@ -314,7 +314,7 @@ jobs:
                   ],
                 );
               });
-              if (msg != null && mounted) {
+              if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('پیام پشتیبانی ارسال شد. ممنون!'), backgroundColor: Colors.green));
               }
             }
@@ -768,9 +768,9 @@ jobs:
                   const SizedBox(height: 20),
                   const Text('نوع اپ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Row(children: [
-                    Expanded(child: RadioListTile<String>(value: 'content', groupValue: _type, onChanged: (v) => setState(() => _type = v!), title: const Text('محتوا محور'), subtitle: const Text('صفحات دلخواه'))),
-                    Expanded(child: RadioListTile<String>(value: 'wallpaper', groupValue: _type, onChanged: (v) => setState(() => _type = v!), title: const Text('والپیپر'), subtitle: const Text('پس زمینه'))),
+                  Column(children: [
+                    RadioListTile<String>(value: 'content', groupValue: _type, onChanged: (v) => setState(() => _type = v!), title: const Text('محتوا محور'), subtitle: const Text('صفحات دلخواه')),
+                    RadioListTile<String>(value: 'wallpaper', groupValue: _type, onChanged: (v) => setState(() => _type = v!), title: const Text('والپیپر'), subtitle: const Text('پس زمینه')),
                   ]),
                   const SizedBox(height: 12),
                   const Text('به زودی:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
@@ -832,8 +832,6 @@ jobs:
           flutter pub add shared_preferences
           flutter pub add url_launcher
           flutter pub add image_picker
-          flutter pub add video_player
-          flutter pub add just_audio
 
       - name: Build APK
         run: flutter build apk --release
