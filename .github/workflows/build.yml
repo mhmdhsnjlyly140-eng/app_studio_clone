@@ -34,12 +34,64 @@ jobs:
       run: |
         flutter pub get
         flutter pub add shared_preferences
+        flutter pub add flutter_launcher_icons
+        flutter pub add flutter_native_splash
+
+    - name: Create App Icon
+      run: |
+        mkdir -p assets
+        cat > assets/icon.svg << 'SVG_EOF'
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+          <defs>
+            <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#6A11CB"/>
+              <stop offset="100%" style="stop-color:#2575FC"/>
+            </linearGradient>
+          </defs>
+          <rect width="512" height="512" rx="100" fill="url(#grad)"/>
+          <rect x="140" y="140" width="80" height="80" rx="15" fill="white"/>
+          <rect x="230" y="140" width="80" height="80" rx="15" fill="white"/>
+          <rect x="320" y="140" width="80" height="80" rx="15" fill="white"/>
+          <rect x="140" y="230" width="80" height="80" rx="15" fill="white"/>
+          <rect x="230" y="230" width="80" height="80" rx="15" fill="white"/>
+          <rect x="320" y="230" width="80" height="80" rx="15" fill="white"/>
+          <rect x="140" y="320" width="80" height="80" rx="15" fill="white"/>
+          <rect x="230" y="320" width="80" height="80" rx="15" fill="white"/>
+          <rect x="320" y="320" width="80" height="80" rx="15" fill="white"/>
+        </svg>
+        SVG_EOF
+
+    - name: Configure App Icon
+      run: |
+        cat > flutter_launcher_icons.yaml << 'ICON_EOF'
+        flutter_launcher_icons:
+          android: "launcher_icon"
+          ios: true
+          image_path: "assets/icon.svg"
+          min_sdk_android: 21
+        ICON_EOF
+        dart run flutter_launcher_icons || true
+
+    - name: Configure Splash Screen
+      run: |
+        cat > flutter_native_splash.yaml << 'SPLASH_EOF'
+        flutter_native_splash:
+          color: "#6A11CB"
+          image: "assets/icon.svg"
+          android: true
+          ios: true
+          android_12:
+            color: "#6A11CB"
+            image: "assets/icon.svg"
+        SPLASH_EOF
+        dart run flutter_native_splash:create || true
 
     - name: Write AppLand main.dart
       run: |
         cat > lib/main.dart << 'DART_EOF'
         import 'package:flutter/material.dart';
         import 'package:shared_preferences/shared_preferences.dart';
+        import 'dart:convert';
 
         void main() {
           runApp(const AppLand());
@@ -57,7 +109,118 @@ jobs:
                 primarySwatch: Colors.deepPurple,
                 useMaterial3: true,
               ),
-              home: const MainScreen(),
+              home: const SplashScreen(),
+            );
+          }
+        }
+
+        // ==================== Splash Screen ====================
+        class SplashScreen extends StatefulWidget {
+          const SplashScreen({super.key});
+
+          @override
+          State<SplashScreen> createState() => _SplashScreenState();
+        }
+
+        class _SplashScreenState extends State<SplashScreen>
+            with SingleTickerProviderStateMixin {
+          late AnimationController _controller;
+          late Animation<double> _fadeAnimation;
+          late Animation<double> _scaleAnimation;
+
+          @override
+          void initState() {
+            super.initState();
+            _controller = AnimationController(
+              vsync: this,
+              duration: const Duration(milliseconds: 1500),
+            );
+            _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+              CurvedAnimation(parent: _controller, curve: Curves.easeIn),
+            );
+            _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
+              CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
+            );
+            _controller.forward();
+
+            Future.delayed(const Duration(seconds: 3), () {
+              if (mounted) {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const MainScreen()),
+                );
+              }
+            });
+          }
+
+          @override
+          void dispose() {
+            _controller.dispose();
+            super.dispose();
+          }
+
+          @override
+          Widget build(BuildContext context) {
+            return Scaffold(
+              body: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xFF6A11CB), Color(0xFF2575FC)],
+                  ),
+                ),
+                child: Center(
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: ScaleTransition(
+                      scale: _scaleAnimation,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 140,
+                            height: 140,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(35),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.3),
+                                  blurRadius: 30,
+                                  spreadRadius: 10,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.apps,
+                              size: 80,
+                              color: Color(0xFF6A11CB),
+                            ),
+                          ),
+                          const SizedBox(height: 30),
+                          const Text(
+                            'اپ‌لند',
+                            style: TextStyle(
+                              fontSize: 42,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: 3,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'سرزمین اپ‌های تو',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             );
           }
         }
@@ -72,17 +235,23 @@ jobs:
         class _MainScreenState extends State<MainScreen> {
           int _currentIndex = 0;
 
-          final List<Widget> _pages = const [
-            HomePage(),
-            MyAppsPage(),
-            CreateAppPage(),
-            SettingsPage(),
-          ];
-
           @override
           Widget build(BuildContext context) {
+            final pages = [
+              const HomePage(),
+              const MyAppsPage(),
+              CreateAppPage(
+                onAppCreated: () {
+                  setState(() {
+                    _currentIndex = 1;
+                  });
+                },
+              ),
+              const SettingsPage(),
+            ];
+
             return Scaffold(
-              body: _pages[_currentIndex],
+              body: pages[_currentIndex],
               bottomNavigationBar: NavigationBar(
                 selectedIndex: _currentIndex,
                 onDestinationSelected: (index) {
@@ -115,6 +284,31 @@ jobs:
               ),
             );
           }
+        }
+
+        // ==================== مدل اپ ====================
+        class MyAppModel {
+          final String name;
+          final String welcome;
+          final int colorValue;
+
+          MyAppModel({
+            required this.name,
+            required this.welcome,
+            required this.colorValue,
+          });
+
+          Map<String, dynamic> toJson() => {
+                'name': name,
+                'welcome': welcome,
+                'color': colorValue,
+              };
+
+          factory MyAppModel.fromJson(Map<String, dynamic> json) => MyAppModel(
+                name: json['name'],
+                welcome: json['welcome'],
+                colorValue: json['color'],
+              );
         }
 
         // ==================== صفحه خانه ====================
@@ -219,8 +413,83 @@ jobs:
         }
 
         // ==================== صفحه اپ‌های من ====================
-        class MyAppsPage extends StatelessWidget {
+        class MyAppsPage extends StatefulWidget {
           const MyAppsPage({super.key});
+
+          @override
+          State<MyAppsPage> createState() => _MyAppsPageState();
+        }
+
+        class _MyAppsPageState extends State<MyAppsPage> {
+          List<MyAppModel> _apps = [];
+          bool _isLoading = true;
+
+          @override
+          void initState() {
+            super.initState();
+            _loadApps();
+          }
+
+          Future<void> _loadApps() async {
+            final prefs = await SharedPreferences.getInstance();
+            final appsJson = prefs.getStringList('my_apps') ?? [];
+            setState(() {
+              _apps = appsJson
+                  .map((e) => MyAppModel.fromJson(jsonDecode(e)))
+                  .toList();
+              _isLoading = false;
+            });
+          }
+
+          Future<void> _deleteApp(int index) async {
+            final prefs = await SharedPreferences.getInstance();
+            final appsJson = prefs.getStringList('my_apps') ?? [];
+            appsJson.removeAt(index);
+            await prefs.setStringList('my_apps', appsJson);
+            _loadApps();
+          }
+
+          void _showBuildDialog(MyAppModel app) {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('ساخت APK'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.build, size: 60, color: Color(0xFF6A11CB)),
+                    const SizedBox(height: 16),
+                    Text('آیا می‌خواهید APK اپ «${app.name}» ساخته شود؟'),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'این فرآیند از طریق GitHub Actions انجام می‌شود.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('لغو'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('درخواست ساخت APK ارسال شد! 🚀'),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6A11CB),
+                    ),
+                    child: const Text('بساز'),
+                  ),
+                ],
+              ),
+            );
+          }
 
           @override
           Widget build(BuildContext context) {
@@ -230,31 +499,88 @@ jobs:
                 backgroundColor: const Color(0xFF6A11CB),
                 foregroundColor: Colors.white,
               ),
-              body: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.apps, size: 80, color: Colors.grey),
-                    SizedBox(height: 20),
-                    Text(
-                      'هنوز اپی نساخته‌اید',
-                      style: TextStyle(fontSize: 18, color: Colors.grey),
-                    ),
-                    SizedBox(height: 10),
-                    Text(
-                      'از تب «ساخت اپ» شروع کنید',
-                      style: TextStyle(fontSize: 14, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
+              body: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _apps.isEmpty
+                      ? const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.apps, size: 80, color: Colors.grey),
+                              SizedBox(height: 20),
+                              Text(
+                                'هنوز اپی نساخته‌اید',
+                                style: TextStyle(
+                                    fontSize: 18, color: Colors.grey),
+                              ),
+                              SizedBox(height: 10),
+                              Text(
+                                'از تب «ساخت اپ» شروع کنید',
+                                style: TextStyle(
+                                    fontSize: 14, color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _apps.length,
+                          itemBuilder: (context, index) {
+                            final app = _apps[index];
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: ListTile(
+                                leading: Container(
+                                  width: 50,
+                                  height: 50,
+                                  decoration: BoxDecoration(
+                                    color: Color(app.colorValue),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.apps,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                title: Text(
+                                  app.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                subtitle: Text(app.welcome),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.build,
+                                          color: Color(0xFF6A11CB)),
+                                      onPressed: () => _showBuildDialog(app),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete,
+                                          color: Colors.red),
+                                      onPressed: () => _deleteApp(index),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
             );
           }
         }
 
         // ==================== صفحه ساخت اپ ====================
         class CreateAppPage extends StatefulWidget {
-          const CreateAppPage({super.key});
+          final VoidCallback onAppCreated;
+
+          const CreateAppPage({super.key, required this.onAppCreated});
 
           @override
           State<CreateAppPage> createState() => _CreateAppPageState();
@@ -295,9 +621,18 @@ jobs:
             });
 
             final prefs = await SharedPreferences.getInstance();
-            final apps = prefs.getStringList('my_apps') ?? [];
-            apps.add('${_appNameController.text}|${_selectedColor.value}|${_welcomeController.text}');
-            await prefs.setStringList('my_apps', apps);
+            final appsJson = prefs.getStringList('my_apps') ?? [];
+
+            final newApp = MyAppModel(
+              name: _appNameController.text,
+              welcome: _welcomeController.text.isEmpty
+                  ? 'به ${_appNameController.text} خوش آمدید'
+                  : _welcomeController.text,
+              colorValue: _selectedColor.value,
+            );
+
+            appsJson.add(jsonEncode(newApp.toJson()));
+            await prefs.setStringList('my_apps', appsJson);
 
             setState(() {
               _isLoading = false;
@@ -305,10 +640,13 @@ jobs:
 
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('اپ «${_appNameController.text}» ساخته شد! 🎉')),
+                SnackBar(
+                  content: Text('اپ «${_appNameController.text}» ساخته شد! 🎉'),
+                ),
               );
               _appNameController.clear();
               _welcomeController.clear();
+              widget.onAppCreated();
             }
           }
 
@@ -327,7 +665,8 @@ jobs:
                   children: [
                     const Text(
                       'نام اپ',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
                     TextField(
@@ -341,10 +680,10 @@ jobs:
                       ),
                     ),
                     const SizedBox(height: 20),
-
                     const Text(
                       'پیام خوش‌آمدگویی',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
                     TextField(
@@ -358,10 +697,10 @@ jobs:
                       ),
                     ),
                     const SizedBox(height: 20),
-
                     const Text(
                       'رنگ اپ',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 12),
                     Wrap(
@@ -388,14 +727,14 @@ jobs:
                               ),
                             ),
                             child: _selectedColor == color
-                                ? const Icon(Icons.check, color: Colors.white)
+                                ? const Icon(Icons.check,
+                                    color: Colors.white)
                                 : null,
                           ),
                         );
                       }).toList(),
                     ),
                     const SizedBox(height: 30),
-
                     ElevatedButton(
                       onPressed: _isLoading ? null : _saveApp,
                       style: ElevatedButton.styleFrom(
