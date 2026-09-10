@@ -25,10 +25,26 @@ jobs:
           flutter-version: '3.32.7'
           channel: 'stable'
 
-      - name: Create Flutter project
+      - name: Save main.dart and create Flutter project
         run: |
+          # ذخیره کد main.dart قبل از پاک کردن
+          mkdir -p /tmp/appland_source
+          cp lib/main.dart /tmp/appland_source/main.dart
+          echo "=== main.dart ذخیره شد ==="
+          head -5 /tmp/appland_source/main.dart
+
+          # پاک کردن همه چیز به جز .git
           find . -maxdepth 1 ! -name '.git' ! -name '.' -exec rm -rf {} \;
+
+          # ساخت پروژه فلاتر
           flutter create --org ir.appland --project-name jalili .
+
+          # برگرداندن کد main.dart
+          cp /tmp/appland_source/main.dart lib/main.dart
+
+          # چک کردن محتوا
+          echo "=== محتوای main.dart ==="
+          head -10 lib/main.dart
 
       - name: Set up MainActivity
         run: |
@@ -43,16 +59,8 @@ jobs:
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
           ls -la android/app/keystore.jks
-
-      - name: Create key.properties
-        run: |
-          cat > android/key.properties << 'EOF'
-          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
-          keyPassword=${{ secrets.KEY_ALIAS_PASSWORD }}
-          keyAlias=${{ secrets.KEY_ALIAS }}
-          storeFile=keystore.jks
-          EOF
-          cat android/key.properties
+          echo "=== Keystore info ==="
+          keytool -list -keystore android/app/keystore.jks -storepass ${{ secrets.KEYSTORE_PASSWORD }} || true
 
       - name: Install dependencies
         run: |
@@ -61,41 +69,28 @@ jobs:
           flutter pub add url_launcher
           flutter pub add image_picker
 
-      - name: Build APK with manual signing
+      - name: Build APK
         run: |
-          # ۱. ساخت APK بدون امضا
           flutter build apk --release
-          
-          # ۲. پیدا کردن فایل APK
+          ls -la build/app/outputs/flutter-apk/
+
+      - name: Sign APK
+        run: |
           APK_DIR=build/app/outputs/flutter-apk
-          UNSIGNED_APK=$APK_DIR/app-release.apk
-          
-          if [ ! -f "$UNSIGNED_APK" ]; then
-            echo "APK not found!"
-            ls -la $APK_DIR
-            exit 1
-          fi
-          
-          # ۳. حذف امضای دیباگ
-          zip -d $UNSIGNED_APK "META-INF/*.SF" || true
-          zip -d $UNSIGNED_APK "META-INF/*.DSA" || true
-          zip -d $UNSIGNED_APK "META-INF/*.RSA" || true
-          
-          # ۴. امضا با کلید اختصاصی
+          APK=$APK_DIR/app-release.apk
+
+          # حذف امضای دیباگ
+          zip -d $APK "META-INF/*.SF" || true
+          zip -d $APK "META-INF/*.DSA" || true
+          zip -d $APK "META-INF/*.RSA" || true
+
+          # امضا با کلید اختصاصی
           jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 \
             -keystore android/app/keystore.jks \
             -storepass ${{ secrets.KEYSTORE_PASSWORD }} \
-            -keypass ${{ secrets.KEY_ALIAS_PASSWORD }} \
-            $UNSIGNED_APK \
+            -keypass ${{ secrets.KEYSTORE_PASSWORD }} \
+            $APK \
             ${{ secrets.KEY_ALIAS }}
-          
-          # ۵. زیپ‌الاین
-          $ANDROID_HOME/build-tools/35.0.0/zipalign -v 4 \
-            $UNSIGNED_APK \
-            $APK_DIR/app-release-signed.apk
-          
-          # ۶. جایگزینی APK اصلی با نسخه امضا شده
-          mv $APK_DIR/app-release-signed.apk $UNSIGNED_APK
 
       - name: Verify APK Signature
         run: |
