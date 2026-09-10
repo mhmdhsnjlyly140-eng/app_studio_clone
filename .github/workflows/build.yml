@@ -1,4 +1,4 @@
-name: Build and Distribute APK
+name: Build AppLand APK
 
 on:
   push:
@@ -27,15 +27,140 @@ jobs:
 
     - name: Create Flutter project
       run: |
-        # ذخیره کد اپ‌لند قبل از پاک شدن
-        cp lib/main.dart /tmp/main_backup.dart 2>/dev/null || true
         find . -maxdepth 1 ! -name '.git' ! -name '.' -exec rm -rf {} \;
         flutter create --org com.appland --project-name appland .
-        # برگرداندن کد اپ‌لند
-        cp /tmp/main_backup.dart lib/main.dart 2>/dev/null || true
 
     - name: Install dependencies
       run: flutter pub get
+
+    - name: Write AppLand main.dart
+      run: |
+        cat > lib/main.dart << 'DART_EOF'
+        import 'package:flutter/material.dart';
+
+        void main() {
+          runApp(const AppLand());
+        }
+
+        class AppLand extends StatelessWidget {
+          const AppLand({super.key});
+
+          @override
+          Widget build(BuildContext context) {
+            return MaterialApp(
+              debugShowCheckedModeBanner: false,
+              title: 'اپ‌لند',
+              theme: ThemeData(
+                primarySwatch: Colors.deepPurple,
+                useMaterial3: true,
+              ),
+              home: const HomePage(),
+            );
+          }
+        }
+
+        class HomePage extends StatelessWidget {
+          const HomePage({super.key});
+
+          @override
+          Widget build(BuildContext context) {
+            return Scaffold(
+              body: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xFF6A11CB), Color(0xFF2575FC)],
+                  ),
+                ),
+                child: SafeArea(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 20,
+                                spreadRadius: 5,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.apps,
+                            size: 70,
+                            color: Color(0xFF6A11CB),
+                          ),
+                        ),
+                        const SizedBox(height: 30),
+                        const Text(
+                          'اپ‌لند',
+                          style: TextStyle(
+                            fontSize: 48,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          'سرزمین اپ‌های تو',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.white70,
+                          ),
+                        ),
+                        const SizedBox(height: 50),
+                        ElevatedButton(
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('به اپ‌لند خوش آمدید! 🚀'),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: const Color(0xFF6A11CB),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 50,
+                              vertical: 18,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                          ),
+                          child: const Text(
+                            'شروع کنید',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'نسخه ۱.۰.۰',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white54,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }
+        }
+        DART_EOF
 
     - name: Build APK (Release)
       run: flutter build apk --release
