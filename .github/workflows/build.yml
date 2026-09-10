@@ -4,15 +4,6 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
-    inputs:
-      store:
-        description: 'Store to build for (bazaar/myket)'
-        required: true
-        default: 'bazaar'
-        type: choice
-        options:
-          - bazaar
-          - myket
 
 jobs:
   build:
@@ -37,7 +28,7 @@ jobs:
     - name: Create Flutter project
       run: |
         find . -maxdepth 1 ! -name '.git' ! -name '.' -exec rm -rf {} \;
-        flutter create --org com.appland --project-name appland .
+        flutter create --org ir.appland --project-name jalili .
 
     - name: Set NDK Version
       run: |
@@ -46,19 +37,78 @@ jobs:
           sed -i 's|android {|android {\n    ndkVersion = "27.0.12077973"|' $GRADLE_FILE || true
         fi
 
-    - name: Add JitPack repository
-      run: |
-        sed -i 's|repositories {|repositories {\n        maven { url "https://jitpack.io" }|' android/build.gradle.kts || true
-
     - name: Set up MainActivity
       run: |
-        cat > android/app/src/main/kotlin/com/appland/appland/MainActivity.kt << 'KOTLIN_EOF'
-        package com.appland.appland
+        mkdir -p android/app/src/main/kotlin/ir/appland/jalili
+        cat > android/app/src/main/kotlin/ir/appland/jalili/MainActivity.kt << 'KOTLIN_EOF'
+        package ir.appland.jalili
 
         import io.flutter.embedding.android.FlutterFragmentActivity
 
         class MainActivity: FlutterFragmentActivity()
         KOTLIN_EOF
+
+    - name: Decode Keystore
+      run: |
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
+
+    - name: Create key.properties
+      run: |
+        cat > android/key.properties << 'EOF'
+        storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+        keyPassword=${{ secrets.KEY_ALIAS_PASSWORD }}
+        keyAlias=${{ secrets.KEY_ALIAS }}
+        storeFile=keystore.jks
+        EOF
+
+    - name: Configure Signing
+      run: |
+        GRADLE_FILE=android/app/build.gradle.kts
+        python3 << 'PYTHON_EOF'
+        import re
+
+        gradle_file = 'android/app/build.gradle.kts'
+
+        with open(gradle_file, 'r') as f:
+            content = f.read()
+
+        # اضافه کردن import
+        if 'java.util.Properties' not in content:
+            content = content.replace(
+                'import io.flutter.embedding.android.FlutterActivity',
+                '''import io.flutter.embedding.android.FlutterActivity
+        import java.util.Properties
+        import java.io.FileInputStream'''
+            )
+
+        # اضافه کردن signingConfigs بعد از android {
+        signing_block = '''
+            signingConfigs {
+                create("release") {
+                    val keystoreProperties = Properties()
+                    val keystorePropertiesFile = rootProject.file("key.properties")
+                    if (keystorePropertiesFile.exists()) {
+                        keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+                    }
+                    keyAlias = keystoreProperties["keyAlias"] as String
+                    keyPassword = keystoreProperties["keyPassword"] as String
+                    storeFile = file(keystoreProperties["storeFile"] as String)
+                    storePassword = keystoreProperties["storePassword"] as String
+                }
+            }
+        '''
+        content = content.replace('android {', 'android {' + signing_block, 1)
+
+        # تغییر buildTypes
+        buildtypes_block = '''buildTypes {
+                release {
+                    signingConfig = signingConfigs.getByName("release")
+                }'''
+        content = content.replace('buildTypes {', buildtypes_block, 1)
+
+        with open(gradle_file, 'w') as f:
+            f.write(content)
+        PYTHON_EOF
 
     - name: Install dependencies
       run: |
@@ -66,12 +116,11 @@ jobs:
         flutter pub add shared_preferences
         flutter pub add url_launcher
         flutter pub add image_picker
-        flutter pub add iran_iap
 
     - name: Add Android permissions
       run: |
         MANIFEST=android/app/src/main/AndroidManifest.xml
-        sed -i 's|<application|<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>\n    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="ir.mservices.market.BILLING"/>\n    <application|' $MANIFEST || true
+        sed -i 's|<application|<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>\n    <uses-permission android:name="android.permission.INTERNET"/>\n    <application|' $MANIFEST || true
 
     - name: Write AppLand main.dart
       run: |
@@ -80,7 +129,6 @@ jobs:
         import 'package:shared_preferences/shared_preferences.dart';
         import 'package:url_launcher/url_launcher.dart';
         import 'package:image_picker/image_picker.dart';
-        import 'package:iran_iap/iran_iap.dart';
         import 'dart:convert';
         import 'dart:io';
 
@@ -930,21 +978,22 @@ jobs:
 
           Future<void> _purchasePro() async {
             try {
+              // ==========================================
+              // 🔑 کلید RSA کافه‌بازار را اینجا قرار دهید
+              // ==========================================
+              // TODO: بعد از دریافت کلید RSA از پنل کافه‌بازار، اینجا بذارید
+              const rsaKey = 'YOUR_RSA_KEY_HERE';
               const productId = 'appland_pro';
 
-              final iap = IranIap();
-              // برای کافه‌بازار:
-              await iap.initialize(store: Store.bazaar);
-              // برای مایکت:
-              // await iap.initialize(store: Store.myket, rsaKey: 'YOUR_RSA_KEY');
-
-              await iap.purchase(productId);
+              // شبیه‌سازی موفقیت خرید (بعداً با API کافه‌بازار جایگزین میشه)
+              await Future.delayed(const Duration(seconds: 2));
 
               await proStatus.setPro(true);
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('نسخه پرو فعال شد! 🎉'),
+                    backgroundColor: Colors.green,
                   ),
                 );
               }
@@ -1121,7 +1170,7 @@ jobs:
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'کلید RSA (برای اتصال به کافه‌بازار/مایکت)',
+                  'کلید RSA (برای اتصال به کافه‌بازار)',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
@@ -1646,7 +1695,7 @@ jobs:
                     TextField(
                       controller: _packageNameController,
                       decoration: InputDecoration(
-                        hintText: 'مثلاً: com.example.myapp',
+                        hintText: 'مثلاً: ir.appland.myapp',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -1844,13 +1893,11 @@ jobs:
         DART_EOF
 
     - name: Build APK (Release)
-      run: |
-        STORE="${{ github.event.inputs.store || 'bazaar' }}"
-        flutter build apk --release --dart-define=IRAN_IAP_STORE=$STORE
+      run: flutter build apk --release
 
     - name: Upload APK as Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: appland-apk-${{ github.event.inputs.store || 'bazaar' }}
+        name: appland-apk
         path: build/app/outputs/flutter-apk/app-release.apk
         retention-days: 7
