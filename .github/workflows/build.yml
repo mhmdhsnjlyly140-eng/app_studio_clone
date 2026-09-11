@@ -77,6 +77,7 @@ jobs:
           import 'package:video_player/video_player.dart';
           import 'package:audioplayers/audioplayers.dart';
           import 'dart:convert';
+          import 'dart:io';
 
           const bazaarRsaKey = String.fromEnvironment('BAZAAR_RSA_KEY');
 
@@ -309,9 +310,7 @@ jobs:
               try {
                 final uri = Uri.parse(url);
                 if (await canLaunchUrl(uri)) { await launchUrl(uri, mode: LaunchMode.externalApplication); return; }
-                final i = Uri.parse('intent://rubika.ir/#Intent;scheme=https;package=ir.rubika;end');
-                if (await canLaunchUrl(i)) { await launchUrl(i); return; }
-                final androidIntent = Uri.parse('intent://${url.replaceAll("https://", "")}#Intent;scheme=https;package=ir.rubika;end');
+                final androidIntent = Uri.parse('intent://rubika.ir/#Intent;scheme=https;package=ir.rubika;end');
                 if (await canLaunchUrl(androidIntent)) { await launchUrl(androidIntent); return; }
                 if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('لطفاً روبیکا رو نصب کنید یا این آدرس رو دستی باز کنید: $url')));
               } catch (e) {
@@ -842,37 +841,37 @@ jobs:
             }
             void _themeDialog() {
               showDialog(context: context, builder: (c) {
-                final colorCtrl = TextEditingController(text: (_app!['themeColor'] ?? 0xFF6A11CB).toString());
-                final fontCtrl = TextEditingController(text: _app!['fontFamily'] ?? 'default');
                 return AlertDialog(
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   title: const Text('حالت پیشرفته تم'),
-                  content: Column(mainAxisSize: MainAxisSize.min, children: [
-                    const Text('رنگ اصلی اپ:'),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8, runSpacing: 8,
-                      children: [
-                        Colors.deepPurple, Colors.blue, Colors.red, Colors.teal, Colors.orange, Colors.purple,
-                      ].map((c) => GestureDetector(
-                        onTap: () => setState(() => _app!['themeColor'] = c.value),
-                        child: Container(width: 40, height: 40, decoration: BoxDecoration(color: c, shape: BoxShape.circle, border: Border.all(color: (_app!['themeColor'] ?? 0) == c.value ? Colors.black : Colors.transparent, width: 3))),
-                      )).toList(),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text('فونت اپ:'),
-                    const SizedBox(height: 8),
-                    DropdownButton<String>(
-                      value: _app!['fontFamily'] ?? 'default',
-                      isExpanded: true,
-                      items: const [
-                        DropdownMenuItem(value: 'default', child: Text('پیش فرض')),
-                        DropdownMenuItem(value: 'vazir', child: Text('وزیرمتن')),
-                        DropdownMenuItem(value: 'iranSans', child: Text('ایران سنس')),
-                      ],
-                      onChanged: (v) => setState(() => _app!['fontFamily'] = v),
-                    ),
-                  ]),
+                  content: SingleChildScrollView(
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      const Text('رنگ اصلی اپ:'),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8, runSpacing: 8,
+                        children: [
+                          Colors.deepPurple, Colors.blue, Colors.red, Colors.teal, Colors.orange, Colors.purple,
+                        ].map((c) => GestureDetector(
+                          onTap: () => setState(() => _app!['themeColor'] = c.value),
+                          child: Container(width: 40, height: 40, decoration: BoxDecoration(color: c, shape: BoxShape.circle, border: Border.all(color: (_app!['themeColor'] ?? 0) == c.value ? Colors.black : Colors.transparent, width: 3))),
+                        )).toList(),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text('فونت اپ:'),
+                      const SizedBox(height: 8),
+                      DropdownButton<String>(
+                        value: _app!['fontFamily'] ?? 'default',
+                        isExpanded: true,
+                        items: const [
+                          DropdownMenuItem(value: 'default', child: Text('پیش فرض')),
+                          DropdownMenuItem(value: 'vazir', child: Text('وزیرمتن')),
+                          DropdownMenuItem(value: 'iranSans', child: Text('ایران سنس')),
+                        ],
+                        onChanged: (v) => setState(() => _app!['fontFamily'] = v),
+                      ),
+                    ]),
+                  ),
                   actions: [
                     TextButton(onPressed: () => Navigator.pop(c), child: const Text('لغو')),
                     ElevatedButton(
@@ -947,11 +946,11 @@ jobs:
             }
             Widget _lockedTab(String title, String message, IconData icon) {
               return Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(Icons.lock, size: 80, color: Colors.grey[400]),
+                const Icon(Icons.lock, size: 80, color: Colors.grey),
                 const SizedBox(height: 24),
                 Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
-                Text(message, textAlign: TextAlign.center, style: TextStyle(fontSize: 15, color: Colors.grey[600])),
+                Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, color: Colors.grey)),
                 const SizedBox(height: 30),
                 ElevatedButton.icon(
                   onPressed: () => _showBuyDialogForApp(),
@@ -965,7 +964,7 @@ jobs:
               showDialog(context: context, builder: (c) => AlertDialog(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 title: const Text('خرید پرو این اپ'),
-                content: Text('برای فعال سازی تبلیغات و پرداخت این اپ، مبلغ ۱۹۹,۰۰۰ تومان پرداخت کنید.'),
+                content: const Text('برای فعال سازی تبلیغات و پرداخت این اپ، مبلغ ۱۹۹,۰۰۰ تومان پرداخت کنید.'),
                 actions: [
                   TextButton(onPressed: () => Navigator.pop(c), child: const Text('لغو')),
                   ElevatedButton(
