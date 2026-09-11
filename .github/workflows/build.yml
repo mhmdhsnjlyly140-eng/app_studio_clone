@@ -27,6 +27,7 @@ jobs:
           sed -i 's|applicationId = "ir.appland.appland"|applicationId = "ir.appland.jalili"|' android/app/build.gradle.kts || true
           sed -i 's|namespace = "ir.appland.appland"|namespace = "ir.appland.jalili"|' android/app/build.gradle.kts || true
           sed -i 's|android:label="appland"|android:label="اپ‌لند"|' android/app/src/main/AndroidManifest.xml || true
+          sed -i 's|ndkVersion = flutter.ndkVersion|ndkVersion = "27.0.12077973"|' android/app/build.gradle.kts || true
 
       - name: Install deps
         run: |
@@ -36,14 +37,14 @@ jobs:
           flutter pub add image_picker
           flutter pub add cafebazaar_flutter
 
-      - name: Fix cafebazaar_flutter namespace and manifest
+      - name: Fix cafebazaar_flutter namespace, manifest, and JVM target
         run: |
           GRADLE_FILE=$(find ~/.pub-cache -path "*cafebazaar_flutter*/android/build.gradle" | head -1)
           echo "Gradle file: $GRADLE_FILE"
           if [ -n "$GRADLE_FILE" ] && [ -f "$GRADLE_FILE" ]; then
-            sed -i 's|android {|android {\n    namespace "ir.javadzobeidi.cafebazaar_flutter"|' $GRADLE_FILE
-            echo "=== namespace اضافه شد ==="
-            head -30 $GRADLE_FILE
+            sed -i 's|android {|android {\n    namespace "ir.javadzobeidi.cafebazaar_flutter"\n    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }\n    kotlinOptions {\n        jvmTarget = "17"\n    }|' $GRADLE_FILE
+            echo "=== namespace و JVM target اضافه شد ==="
+            head -40 $GRADLE_FILE
           fi
 
           MANIFEST_FILE=$(find ~/.pub-cache -path "*cafebazaar_flutter*/android/src/main/AndroidManifest.xml" | head -1)
