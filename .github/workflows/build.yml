@@ -35,24 +35,15 @@ jobs:
           flutter pub add shared_preferences
           flutter pub add url_launcher
           flutter pub add image_picker
-          flutter pub add cafebazaar_flutter
+          flutter pub add flutter_poolakey
 
-      - name: Fix cafebazaar_flutter namespace, manifest, and JVM target
+      - name: Add JitPack repository
         run: |
-          GRADLE_FILE=$(find ~/.pub-cache -path "*cafebazaar_flutter*/android/build.gradle" | head -1)
-          echo "Gradle file: $GRADLE_FILE"
-          if [ -n "$GRADLE_FILE" ] && [ -f "$GRADLE_FILE" ]; then
-            sed -i 's|android {|android {\n    namespace "ir.javadzobeidi.cafebazaar_flutter"\n    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }\n    kotlinOptions {\n        jvmTarget = "17"\n    }|' $GRADLE_FILE
-            echo "=== namespace و JVM target اضافه شد ==="
-            head -40 $GRADLE_FILE
-          fi
-
-          MANIFEST_FILE=$(find ~/.pub-cache -path "*cafebazaar_flutter*/android/src/main/AndroidManifest.xml" | head -1)
-          echo "Manifest file: $MANIFEST_FILE"
-          if [ -n "$MANIFEST_FILE" ] && [ -f "$MANIFEST_FILE" ]; then
-            sed -i 's|package="ir.javadzobeidi.cafebazaar_flutter"||g' $MANIFEST_FILE
-            echo "=== package از manifest حذف شد ==="
-            cat $MANIFEST_FILE
+          GRADLE_FILE=android/build.gradle.kts
+          if [ -f "$GRADLE_FILE" ]; then
+            sed -i 's|repositories {|repositories {\n        maven { url = uri("https://jitpack.io") }|' $GRADLE_FILE
+            echo "=== JitPack اضافه شد ==="
+            cat $GRADLE_FILE
           fi
 
       - name: Set up MainActivity for Billing
@@ -86,7 +77,7 @@ jobs:
           import 'package:shared_preferences/shared_preferences.dart';
           import 'package:url_launcher/url_launcher.dart';
           import 'package:image_picker/image_picker.dart';
-          import 'package:cafebazaar_flutter/cafebazaar_flutter.dart';
+          import 'package:flutter_poolakey/flutter_poolakey.dart';
           import 'dart:convert';
 
           const bazaarRsaKey = String.fromEnvironment('BAZAAR_RSA_KEY');
@@ -314,9 +305,9 @@ jobs:
                 return;
               }
               try {
-                final bazaar = CafebazaarFlutter.instance;
-                final inapp = bazaar.inAppPurchase(bazaarRsaKey);
-                final purchaseInfo = await inapp.purchase('appland_pro', payLoad: 'appland_pro_purchase');
+                final poolakey = FlutterPoolakey();
+                await poolakey.connect(rsaPublicKey: bazaarRsaKey);
+                final purchaseInfo = await poolakey.purchaseProduct('appland_pro', payload: 'appland_pro_purchase');
                 if (purchaseInfo != null) {
                   await proStatus.setPro(true);
                   if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('نسخه پرو فعال شد!'), backgroundColor: Colors.green));
