@@ -74,8 +74,6 @@ jobs:
           import 'package:url_launcher/url_launcher.dart';
           import 'package:image_picker/image_picker.dart';
           import 'package:flutter_poolakey/flutter_poolakey.dart';
-          import 'package:video_player/video_player.dart';
-          import 'package:audioplayers/audioplayers.dart';
           import 'dart:convert';
           import 'dart:io';
 
@@ -231,25 +229,22 @@ jobs:
                         Text('با اپ لند می تونید بدون کدنویسی، اپ اندروید بسازید!', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                         SizedBox(height: 16),
                         Text('۱. صفحه خانه:', style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text('اینجا شروع اپ، مرکز آموزش و پشتیبانی رو می بینید.', style: TextStyle(fontSize: 13)),
+                        Text('شروع اپ، مرکز آموزش و پشتیبانی.', style: TextStyle(fontSize: 13)),
                         SizedBox(height: 12),
                         Text('۲. اپ های من:', style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text('لیست اپ هایی که ساختید اینجاست. روی هر اپ می تونید ویرایش، خرید پرو، جزئیات و حذف بزنید.', style: TextStyle(fontSize: 13)),
+                        Text('لیست اپ هایی که ساختید.', style: TextStyle(fontSize: 13)),
                         SizedBox(height: 12),
                         Text('۳. ساخت اپ:', style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text('اطلاعات اپ (اسم، رنگ، آیکون، پکیج) رو وارد کنید و اپ بسازید.', style: TextStyle(fontSize: 13)),
+                        Text('اطلاعات اپ (اسم، رنگ، آیکون، پکیج) رو وارد کنید.', style: TextStyle(fontSize: 13)),
                         SizedBox(height: 12),
                         Text('۴. صفحه ساز:', style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text('از داخل ویرایش اپ، صفحات دلخواه بسازید و المان (متن، دکمه، تصویر، فیلم، موزیک، منو) اضافه کنید.', style: TextStyle(fontSize: 13)),
+                        Text('از داخل ویرایش اپ، صفحات و المان ها رو بسازید.', style: TextStyle(fontSize: 13)),
                         SizedBox(height: 12),
-                        Text('۵. تبلیغات و پرداخت:', style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text('برای هر اپ، ۱۹۹,۰۰۰ تومان پرداخت کنید تا بتونید تبلیغات (ادیوری/تپسل) و پرداخت درون برنامه ای (کافه بازار) رو فعال کنید.', style: TextStyle(fontSize: 13)),
+                        Text('۵. تبلیغات و پرداخت (برای هر اپ):', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text('با ۱۹۹,۰۰۰ تومان، تبلیغات و پرداخت هر اپ فعال میشه.', style: TextStyle(fontSize: 13)),
                         SizedBox(height: 12),
-                        Text('۶. خرید دائمی:', style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text('با ۹۹۹,۰۰۰ تومان، نسخه دائمی اپ لند رو بخرید و همه اپ ها رو رایگان بسازید.', style: TextStyle(fontSize: 13)),
-                        SizedBox(height: 12),
-                        Text('۷. تنظیمات:', style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text('حالت تاریک، زبان، خرید دائمی و درباره اپ لند اینجاست.', style: TextStyle(fontSize: 13)),
+                        Text('۶. نسخه دائمی اپ لند:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text('با ۹۹۹,۰۰۰ تومان، همه اپ ها رایگان میشن.', style: TextStyle(fontSize: 13)),
                       ],
                     ),
                   ),
@@ -266,7 +261,7 @@ jobs:
                         padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                       ),
-                      child: const Text('متوجه شدم، شروع کن'),
+                      child: const Text('متوجه شدم'),
                     ),
                   ],
                 ),
@@ -379,7 +374,6 @@ jobs:
                       side: primary ? BorderSide.none : const BorderSide(color: Colors.white, width: 2),
                     ),
                     elevation: primary ? 8 : 0,
-                    shadowColor: primary ? Colors.black.withOpacity(0.3) : Colors.transparent,
                   ),
                 ),
               );
@@ -424,11 +418,7 @@ jobs:
                 content: const Text('مطمئنی می خوای این اپ رو حذف کنی؟'),
                 actions: [
                   TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('لغو')),
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(c, true),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-                    child: const Text('حذف'),
-                  ),
+                  ElevatedButton(onPressed: () => Navigator.pop(c, true), style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white), child: const Text('حذف')),
                 ],
               ));
               if (confirm == true) {
@@ -452,7 +442,7 @@ jobs:
                   _detailRow('پکیج', app['packageName'] ?? ''),
                   _detailRow('نوع', app['appType'] == 'content' ? 'محتوا محور' : 'والپیپر'),
                   _detailRow('تعداد صفحات', '${(app['pages'] as List? ?? []).length}'),
-                  _detailRow('کلید RSA', (app['rsaKey'] ?? '').isEmpty ? 'تنظیم نشده' : 'تنظیم شده'),
+                  _detailRow('وضعیت پرو', app['isPro'] == true ? 'پرو' : (proStatus.isPro ? 'پرو (دائمی)' : 'رایگان')),
                 ]),
                 actions: [TextButton(onPressed: () => Navigator.pop(c), child: const Text('بستن'))],
               ));
@@ -485,12 +475,12 @@ jobs:
             }
             Future<void> _buyProForApp(int i) async {
               final app = _filtered[i];
+              final realIndex = _apps.indexOf(app);
               if (app['isPro'] == true) {
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('این اپ قبلاً پرو شده!'), backgroundColor: Colors.green));
                 return;
               }
               if (proStatus.isPro) {
-                final realIndex = _apps.indexOf(_filtered[i]);
                 app['isPro'] = true;
                 final p = await SharedPreferences.getInstance();
                 final a = p.getStringList('my_apps') ?? [];
@@ -500,19 +490,17 @@ jobs:
                 if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('اپ پرو شد (نسخه دائمی)!'), backgroundColor: Colors.green));
                 return;
               }
-              final rsaKey = bazaarRsaKey;
-              if (rsaKey.isEmpty) {
+              if (bazaarRsaKey.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('کلید RSA تنظیم نشده!'), backgroundColor: Colors.red));
                 return;
               }
               try {
                 await FlutterPoolakey.connect(
-                  rsaKey,
+                  bazaarRsaKey,
                   onSucceed: () async {
                     try {
-                      final response = await FlutterPoolakey.purchase('appland_199', payload: 'app_pro_purchase');
-                      if (response != null) {
-                        final realIndex = _apps.indexOf(_filtered[i]);
+                      final response = await FlutterPoolakey.purchase('appland_pro', payload: 'app_pro_purchase');
+                      if (response != null && response.isNotEmpty && response != 'failed' && response != 'cancelled') {
                         app['isPro'] = true;
                         final p = await SharedPreferences.getInstance();
                         final a = p.getStringList('my_apps') ?? [];
@@ -520,6 +508,8 @@ jobs:
                         await p.setStringList('my_apps', a);
                         _load();
                         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('اپ پرو شد!'), backgroundColor: Colors.green));
+                      } else {
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('پرداخت انجام نشد!'), backgroundColor: Colors.orange));
                       }
                     } catch (e) {
                       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطا: $e'), backgroundColor: Colors.red));
@@ -576,7 +566,7 @@ jobs:
                               itemCount: _filtered.length,
                               itemBuilder: (c, i) {
                                 final app = _filtered[i];
-                                final isPro = app['isPro'] == true;
+                                final isPro = app['isPro'] == true || proStatus.isPro;
                                 return Container(
                                   margin: const EdgeInsets.only(bottom: 14),
                                   decoration: BoxDecoration(
@@ -672,12 +662,7 @@ jobs:
             @override
             Widget build(BuildContext context) {
               return Scaffold(
-                appBar: AppBar(
-                  title: const Text('ساخت اپ جدید'),
-                  backgroundColor: const Color(0xFF6A11CB),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                ),
+                appBar: AppBar(title: const Text('ساخت اپ جدید'), backgroundColor: const Color(0xFF6A11CB), foregroundColor: Colors.white, elevation: 0),
                 body: SingleChildScrollView(padding: const EdgeInsets.all(20), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   _buildField('نام اپ', _name, 'فروشگاه من', Icons.apps),
                   const SizedBox(height: 20),
@@ -993,11 +978,13 @@ jobs:
                   bazaarRsaKey,
                   onSucceed: () async {
                     try {
-                      final response = await FlutterPoolakey.purchase('appland_199', payload: 'app_pro');
-                      if (response != null) {
+                      final response = await FlutterPoolakey.purchase('appland_pro', payload: 'app_pro');
+                      if (response != null && response.isNotEmpty && response != 'failed' && response != 'cancelled') {
                         setState(() => _app!['isPro'] = true);
                         await _save();
                         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('اپ پرو شد!'), backgroundColor: Colors.green));
+                      } else {
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('پرداخت انجام نشد!'), backgroundColor: Colors.orange));
                       }
                     } catch (e) {
                       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطا: $e'), backgroundColor: Colors.red));
@@ -1317,9 +1304,11 @@ jobs:
                   onSucceed: () async {
                     try {
                       final response = await FlutterPoolakey.purchase('Appland_daemi', payload: 'lifetime');
-                      if (response != null) {
+                      if (response != null && response.isNotEmpty && response != 'failed' && response != 'cancelled') {
                         await proStatus.setPro(true);
                         if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('نسخه دائمی فعال شد!'), backgroundColor: Colors.green));
+                      } else {
+                        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('پرداخت انجام نشد!'), backgroundColor: Colors.orange));
                       }
                     } catch (e) {
                       if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطا: $e'), backgroundColor: Colors.red));
@@ -1350,7 +1339,7 @@ jobs:
                     child: ListTile(
                       leading: const Icon(Icons.workspace_premium, color: Colors.amber, size: 32),
                       title: const Text('خرید نسخه دائمی', style: TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: const Text('با ۹۹۹,۰۰۰ تومان، همه اپ ها رایگان و همه قابلیت ها باز می شود'),
+                      subtitle: const Text('با ۹۹۹,۰۰۰ تومان، همه اپ ها رایگان میشه'),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                       onTap: () => _buyLifetime(context),
                     ),
