@@ -28,6 +28,27 @@ jobs:
           sed -i 's|namespace = "ir.appland.appland"|namespace = "ir.appland.jalili"|' android/app/build.gradle.kts || true
           sed -i 's|android:label="appland"|android:label="اپ‌لند"|' android/app/src/main/AndroidManifest.xml || true
 
+      - name: Install deps
+        run: |
+          flutter pub get
+          flutter pub add shared_preferences
+          flutter pub add url_launcher
+          flutter pub add image_picker
+          flutter pub add cafebazaar_flutter
+
+      - name: Add namespace to cafebazaar_flutter
+        run: |
+          GRADLE_FILE=$(find ~/.pub-cache -path "*cafebazaar_flutter*/android/build.gradle" | head -1)
+          echo "File found: $GRADLE_FILE"
+          if [ -n "$GRADLE_FILE" ] && [ -f "$GRADLE_FILE" ]; then
+            sed -i 's|android {|android {\n    namespace "com.farsitel.bazaar"|' $GRADLE_FILE
+            echo "=== namespace اضافه شد ==="
+            head -30 $GRADLE_FILE
+          else
+            echo "File not found!"
+            find ~/.pub-cache -name "build.gradle" -path "*cafebazaar*" 2>/dev/null
+          fi
+
       - name: Set up MainActivity for Billing
         run: |
           mkdir -p android/app/src/main/kotlin/ir/appland/jalili
@@ -61,7 +82,6 @@ jobs:
           import 'package:image_picker/image_picker.dart';
           import 'package:cafebazaar_flutter/cafebazaar_flutter.dart';
           import 'dart:convert';
-          import 'dart:io';
 
           const bazaarRsaKey = String.fromEnvironment('BAZAAR_RSA_KEY');
 
@@ -415,14 +435,6 @@ jobs:
             }
           }
           DART_END
-
-      - name: Install deps
-        run: |
-          flutter pub get
-          flutter pub add shared_preferences
-          flutter pub add url_launcher
-          flutter pub add image_picker
-          flutter pub add cafebazaar_flutter
 
       - name: Build APK
         run: flutter build apk --release --dart-define=BAZAAR_RSA_KEY=${{ secrets.BAZAAR_RSA_KEY }}
