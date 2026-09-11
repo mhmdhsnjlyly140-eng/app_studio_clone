@@ -28,6 +28,7 @@ jobs:
           sed -i 's|namespace = "ir.appland.appland"|namespace = "ir.appland.jalili"|' android/app/build.gradle.kts || true
           sed -i 's|android:label="appland"|android:label="اپ‌لند"|' android/app/src/main/AndroidManifest.xml || true
           sed -i 's|ndkVersion = flutter.ndkVersion|ndkVersion = "27.0.12077973"|' android/app/build.gradle.kts || true
+          sed -i 's|minSdk = flutter.minSdkVersion|minSdk = 24|' android/app/build.gradle.kts || true
 
       - name: Install deps
         run: |
@@ -35,7 +36,7 @@ jobs:
           flutter pub add shared_preferences
           flutter pub add url_launcher
           flutter pub add image_picker
-          flutter pub add flutter_poolakey
+          flutter pub add iran_iap
 
       - name: Add JitPack repository
         run: |
@@ -77,7 +78,7 @@ jobs:
           import 'package:shared_preferences/shared_preferences.dart';
           import 'package:url_launcher/url_launcher.dart';
           import 'package:image_picker/image_picker.dart';
-          import 'package:flutter_poolakey/flutter_poolakey.dart';
+          import 'package:iran_iap/iran_iap.dart';
           import 'dart:convert';
 
           const bazaarRsaKey = String.fromEnvironment('BAZAAR_RSA_KEY');
@@ -305,10 +306,10 @@ jobs:
                 return;
               }
               try {
-                final poolakey = FlutterPoolakey();
-                await poolakey.connect(rsaPublicKey: bazaarRsaKey);
-                final purchaseInfo = await poolakey.purchaseProduct('appland_pro', payload: 'appland_pro_purchase');
-                if (purchaseInfo != null) {
+                final iap = IranIap();
+                await iap.initialize(store: Store.bazaar);
+                final purchase = await iap.purchase('appland_pro');
+                if (purchase != null) {
                   await proStatus.setPro(true);
                   if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('نسخه پرو فعال شد!'), backgroundColor: Colors.green));
                 }
