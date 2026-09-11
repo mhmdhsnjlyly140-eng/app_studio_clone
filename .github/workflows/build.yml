@@ -355,7 +355,7 @@ jobs:
                   _detailRow('نوع', app['appType'] == 'content' ? 'محتوا محور' : 'والپیپر'),
                   _detailRow('تعداد صفحات', '${(app['pages'] as List? ?? []).length}'),
                   _detailRow('شناسه محصول', app['productId'] ?? 'تنظیم نشده'),
-                  _detailRow('کلید RSA', (app['rsaKey'] ?? '').isEmpty ? 'تنظیم نشده' : 'تنظیم شده ✅'),
+                  _detailRow('کلید RSA', (app['rsaKey'] ?? '').isEmpty ? 'تنظیم نشده' : 'تنظیم شده'),
                 ]),
                 actions: [TextButton(onPressed: () => Navigator.pop(c), child: const Text('بستن'))],
               ));
@@ -1000,7 +1000,7 @@ jobs:
                 body: AnimatedBuilder(animation: themeNotifier, builder: (context, _) => ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    _buildCard([
+                    _buildCard(context, [
                       SwitchListTile(
                         secondary: const Icon(Icons.dark_mode, color: Color(0xFF6A11CB)),
                         title: const Text('حالت تاریک'),
@@ -1010,7 +1010,7 @@ jobs:
                       ),
                     ]),
                     const SizedBox(height: 12),
-                    _buildCard([
+                    _buildCard(context, [
                       const ListTile(
                         leading: Icon(Icons.language, color: Color(0xFF6A11CB)),
                         title: Text('زبان'),
@@ -1018,7 +1018,7 @@ jobs:
                       ),
                     ]),
                     const SizedBox(height: 12),
-                    _buildCard([
+                    _buildCard(context, [
                       ListTile(
                         leading: const Icon(Icons.info, color: Color(0xFF6A11CB)),
                         title: const Text('درباره اپ لند'),
@@ -1029,7 +1029,7 @@ jobs:
                 )),
               );
             }
-            Widget _buildCard(List<Widget> children) {
+            Widget _buildCard(BuildContext context, List<Widget> children) {
               return Container(
                 decoration: BoxDecoration(
                   color: Theme.of(context).cardColor,
