@@ -36,17 +36,22 @@ jobs:
           flutter pub add image_picker
           flutter pub add cafebazaar_flutter
 
-      - name: Add namespace to cafebazaar_flutter
+      - name: Fix cafebazaar_flutter namespace and manifest
         run: |
           GRADLE_FILE=$(find ~/.pub-cache -path "*cafebazaar_flutter*/android/build.gradle" | head -1)
-          echo "File found: $GRADLE_FILE"
+          echo "Gradle file: $GRADLE_FILE"
           if [ -n "$GRADLE_FILE" ] && [ -f "$GRADLE_FILE" ]; then
-            sed -i 's|android {|android {\n    namespace "com.farsitel.bazaar"|' $GRADLE_FILE
+            sed -i 's|android {|android {\n    namespace "ir.javadzobeidi.cafebazaar_flutter"|' $GRADLE_FILE
             echo "=== namespace اضافه شد ==="
             head -30 $GRADLE_FILE
-          else
-            echo "File not found!"
-            find ~/.pub-cache -name "build.gradle" -path "*cafebazaar*" 2>/dev/null
+          fi
+
+          MANIFEST_FILE=$(find ~/.pub-cache -path "*cafebazaar_flutter*/android/src/main/AndroidManifest.xml" | head -1)
+          echo "Manifest file: $MANIFEST_FILE"
+          if [ -n "$MANIFEST_FILE" ] && [ -f "$MANIFEST_FILE" ]; then
+            sed -i 's|package="ir.javadzobeidi.cafebazaar_flutter"||g' $MANIFEST_FILE
+            echo "=== package از manifest حذف شد ==="
+            cat $MANIFEST_FILE
           fi
 
       - name: Set up MainActivity for Billing
