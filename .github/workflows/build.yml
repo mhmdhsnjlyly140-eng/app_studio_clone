@@ -36,33 +36,18 @@ jobs:
           flutter pub add shared_preferences
           flutter pub add url_launcher
           flutter pub add image_picker
-          flutter pub add flutter_poolakey
 
-      - name: Fix flutter_poolakey namespace and JVM target
+      - name: Add JitPack and Poolakey dependency
         run: |
-          GRADLE_FILE=$(find ~/.pub-cache -path "*flutter_poolakey*/android/build.gradle" | head -1)
-          echo "Gradle file: $GRADLE_FILE"
-          if [ -n "$GRADLE_FILE" ] && [ -f "$GRADLE_FILE" ]; then
-            sed -i 's|android {|android {\n    namespace "ir.cafebazaar.poolakey"\n    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }\n    kotlinOptions {\n        jvmTarget = "17"\n    }|' $GRADLE_FILE
-            echo "=== namespace و JVM target اضافه شد ==="
-            head -40 $GRADLE_FILE
-          fi
-
-          MANIFEST_FILE=$(find ~/.pub-cache -path "*flutter_poolakey*/android/src/main/AndroidManifest.xml" | head -1)
-          echo "Manifest file: $MANIFEST_FILE"
-          if [ -n "$MANIFEST_FILE" ] && [ -f "$MANIFEST_FILE" ]; then
-            sed -i 's|package="[^"]*"||g' $MANIFEST_FILE
-            echo "=== package از manifest حذف شد ==="
-            cat $MANIFEST_FILE
-          fi
-
-      - name: Add JitPack repository
-        run: |
-          GRADLE_FILE=android/build.gradle.kts
+          GRADLE_FILE=android/app/build.gradle.kts
           if [ -f "$GRADLE_FILE" ]; then
-            sed -i 's|repositories {|repositories {\n        maven { url = uri("https://jitpack.io") }|' $GRADLE_FILE
-            echo "=== JitPack اضافه شد ==="
+            sed -i 's|dependencies {|dependencies {\n    implementation("com.github.cafebazaar.Poolakey:poolakey:2.2.0")|' $GRADLE_FILE
+            echo "=== Poolakey اضافه شد ==="
             cat $GRADLE_FILE
+          fi
+          BUILD_GRADLE=android/build.gradle.kts
+          if [ -f "$BUILD_GRADLE" ]; then
+            sed -i 's|repositories {|repositories {\n        maven { url = uri("https://jitpack.io") }|' $BUILD_GRADLE
           fi
 
       - name: Set up MainActivity for Billing
@@ -70,14 +55,89 @@ jobs:
           mkdir -p android/app/src/main/kotlin/ir/appland/jalili
           cat > android/app/src/main/kotlin/ir/appland/jalili/MainActivity.kt << 'KOTLIN_EOF'
           package ir.appland.jalili
-          import io.flutter.embedding.android.FlutterFragmentActivity
-          class MainActivity: FlutterFragmentActivity()
-          KOTLIN_EOF
 
-      - name: Add Bazaar permission
-        run: |
-          MANIFEST=android/app/src/main/AndroidManifest.xml
-          sed -i 's|<application|<uses-permission android:name="com.farsitel.bazaar.permission.PAY_THROUGH_BAZAAR"/>\n    <application|' $MANIFEST || true
+          import android.os.Bundle
+          import androidx.annotation.NonNull
+          import com.farsitel.bazaar.poolakey.Connection
+          import com.farsitel.bazaar.poolakey.ConnectionState
+          import com.farsitel.bazaar.poolakey.Payment
+          import com.farsitel.bazaar.poolakey.config.PaymentConfiguration
+          import com.farsitel.bazaar.poolakey.config.SecurityCheck
+          import io.flutter.embedding.android.FlutterFragmentActivity
+          import io.flutter.embedding.engine.FlutterEngine
+          import io.flutter.plugin.common.MethodChannel
+
+          class MainActivity: FlutterFragmentActivity() {
+              private val CHANNEL = "ir.appland.jalili/billing"
+              private var payment: Payment? = null
+              private var connection: Connection? = null
+
+              override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
+                  super.configureFlutterEngine(flutterEngine)
+                  MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+                      when (call.method) {
+                          "connect" -> {
+                              val rsaKey = call.argument<String>("rsaKey") ?: ""
+                              connectToBazaar(rsaKey, result)
+                          }
+                          "purchase" -> {
+                              val productId = call.argument<String>("productId") ?: ""
+                              purchaseProduct(productId, result)
+                          }
+                          "disconnect" -> {
+                              connection?.disconnect()
+                              result.success(true)
+                          }
+                          else -> result.notImplemented()
+                      }
+                  }
+              }
+
+              private fun connectToBazaar(rsaKey: String, result: MethodChannel.Result) {
+                  val config = PaymentConfiguration(
+                      localSecurityCheck = SecurityCheck.Enable(rsaPublicKey = rsaKey)
+                  )
+                  payment = Payment(context = this, config = config)
+                  connection = payment?.connect { connectionState ->
+                      when (connectionState) {
+                          is ConnectionState.Connected -> {
+                              runOnUiThread { result.success(true) }
+                          }
+                          is ConnectionState.Disconnected -> {
+                              runOnUiThread { result.success(false) }
+                          }
+                          is ConnectionState.Failed -> {
+                              runOnUiThread { result.error("CONNECTION_FAILED", connectionState.throwable.message, null) }
+                          }
+                      }
+                  }
+              }
+
+              private fun purchaseProduct(productId: String, result: MethodChannel.Result) {
+                  val paymentInstance = payment
+                  if (paymentInstance == null) {
+                      result.error("NOT_CONNECTED", "Not connected to Bazaar", null)
+                      return
+                  }
+                  paymentInstance.purchaseProduct(
+                      productId = productId,
+                      payload = "appland_pro_purchase"
+                  ) { purchaseResult ->
+                      when (purchaseResult) {
+                          is Payment.PurchaseResult.Success -> {
+                              runOnUiThread { result.success(purchaseResult.purchaseInfo.productId) }
+                          }
+                          is Payment.PurchaseResult.Failed -> {
+                              runOnUiThread { result.error("PURCHASE_FAILED", purchaseResult.throwable.message, null) }
+                          }
+                          is Payment.PurchaseResult.Cancelled -> {
+                              runOnUiThread { result.success(null) }
+                          }
+                      }
+                  }
+              }
+          }
+          KOTLIN_EOF
 
       - name: Apply Custom Icon
         run: |
@@ -93,13 +153,13 @@ jobs:
         run: |
           cat > lib/main.dart << 'DART_END'
           import 'package:flutter/material.dart';
+          import 'package:flutter/services.dart';
           import 'package:shared_preferences/shared_preferences.dart';
           import 'package:url_launcher/url_launcher.dart';
           import 'package:image_picker/image_picker.dart';
-          import 'package:flutter_poolakey/flutter_poolakey.dart';
           import 'dart:convert';
 
-          const bazaarRsaKey = String.fromEnvironment('BAZAAR_RSA_KEY');
+          const billingChannel = MethodChannel('ir.appland.jalili/billing');
 
           class ProStatus extends ChangeNotifier {
             bool _isPro = false;
@@ -136,6 +196,24 @@ jobs:
             }
           }
           final themeNotifier = ThemeNotifier();
+
+          Future<bool> connectToBazaar(String rsaKey) async {
+            try {
+              final result = await billingChannel.invokeMethod('connect', {'rsaKey': rsaKey});
+              return result == true;
+            } catch (e) {
+              return false;
+            }
+          }
+
+          Future<String?> purchaseFromBazaar(String productId) async {
+            try {
+              final result = await billingChannel.invokeMethod('purchase', {'productId': productId});
+              return result as String?;
+            } catch (e) {
+              return null;
+            }
+          }
 
           void main() => runApp(const AppLand());
 
@@ -319,20 +397,46 @@ jobs:
               if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('پیام پشتیبانی ارسال شد. ممنون!'), backgroundColor: Colors.green));
             }
             Future<void> _buyPro() async {
-              if (bazaarRsaKey.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('کلید RSA تنظیم نشده'), backgroundColor: Colors.red));
-                return;
-              }
               try {
-                final poolakey = FlutterPoolakey(bazaarRsaKey);
-                final purchaseInfo = await poolakey.purchaseProduct('appland_pro', payload: 'appland_pro_purchase');
-                if (purchaseInfo != null) {
+                final prefs = await SharedPreferences.getInstance();
+                final rsaKey = prefs.getString('bazaar_rsa_key') ?? '';
+                if (rsaKey.isEmpty) {
+                  _showRsaDialog();
+                  return;
+                }
+                final connected = await connectToBazaar(rsaKey);
+                if (!connected) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('اتصال به کافه بازار برقرار نشد'), backgroundColor: Colors.red));
+                  return;
+                }
+                final productId = await purchaseFromBazaar('appland_pro');
+                if (productId != null) {
                   await proStatus.setPro(true);
                   if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('نسخه پرو فعال شد!'), backgroundColor: Colors.green));
                 }
               } catch (e) {
                 if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطا در خرید: $e'), backgroundColor: Colors.red));
               }
+            }
+            void _showRsaDialog() {
+              final ctrl = TextEditingController();
+              showDialog(context: context, builder: (c) => AlertDialog(
+                title: const Text('کلید RSA'),
+                content: Column(mainAxisSize: MainAxisSize.min, children: [
+                  const Text('کلید RSA کافه بازار رو وارد کن:'),
+                  const SizedBox(height: 12),
+                  TextField(controller: ctrl, maxLines: 5, decoration: const InputDecoration(hintText: 'MII...', border: OutlineInputBorder())),
+                ]),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(c), child: const Text('لغو')),
+                  ElevatedButton(onPressed: () async {
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setString('bazaar_rsa_key', ctrl.text.trim());
+                    Navigator.pop(c);
+                    _buyPro();
+                  }, style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6A11CB)), child: const Text('ذخیره و خرید')),
+                ],
+              ));
             }
             @override
             Widget build(BuildContext context) {
@@ -452,7 +556,7 @@ jobs:
           DART_END
 
       - name: Build APK
-        run: flutter build apk --release --dart-define=BAZAAR_RSA_KEY=${{ secrets.BAZAAR_RSA_KEY }}
+        run: flutter build apk --release
 
       - name: Decode Keystore
         run: |
