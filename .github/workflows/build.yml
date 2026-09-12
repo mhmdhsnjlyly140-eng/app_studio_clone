@@ -1676,7 +1676,7 @@ jobs:
           DART_END
 
       - name: Build APK
-        run: flutter build apk --release --dart-define=BAZAAR_RSA_KEY=${{ secrets.BAZAAR_RSA_KEY }}
+        run: flutter build apk --release --target-platform android-arm,android-arm64,android-x64 --dart-define=BAZAAR_RSA_KEY=${{ secrets.BAZAAR_RSA_KEY }}
 
       - name: Decode Keystore
         run: |
