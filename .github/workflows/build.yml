@@ -1289,35 +1289,9 @@ jobs:
             }
           }
 
-          class PreviewPage extends StatefulWidget {
+          class PreviewPage extends StatelessWidget {
             final Map<String, dynamic> app;
             const PreviewPage({super.key, required this.app});
-            @override
-            State<PreviewPage> createState() => _PreviewPageState();
-          }
-          class _PreviewPageState extends State<PreviewPage> {
-            late Map<String, dynamic> _app;
-            bool _editMode = false;
-
-            @override
-            void initState() {
-              super.initState();
-              _app = Map<String, dynamic>.from(widget.app);
-            }
-
-            Future<void> _saveApp() async {
-              final p = await SharedPreferences.getInstance();
-              final a = p.getStringList('my_apps') ?? [];
-              for (int i = 0; i < a.length; i++) {
-                final existing = jsonDecode(a[i]) as Map<String, dynamic>;
-                if (existing['name'] == _app['name'] && existing['packageName'] == _app['packageName']) {
-                  a[i] = jsonEncode(_app);
-                  break;
-                }
-              }
-              await p.setStringList('my_apps', a);
-            }
-
             Future<void> _downloadWallpaper(BuildContext context, String path, int index) async {
               try {
                 await Gal.putImage(path, album: 'AppLand');
@@ -1334,143 +1308,14 @@ jobs:
                 }
               }
             }
-
-            void _editElement(int pageIndex, int elementIndex) {
-              final pages = List.from(_app['pages'] ?? []);
-              final page = Map<String, dynamic>.from(pages[pageIndex]);
-              final elements = List.from(page['elements'] ?? []);
-              final el = Map<String, dynamic>.from(elements[elementIndex]);
-
-              final textCtrl = TextEditingController(text: el['text'] ?? '');
-              final linkCtrl = TextEditingController(text: el['link'] ?? '');
-
-              showDialog(
-                context: context,
-                builder: (c) => AlertDialog(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  title: Text('ویرایش ${_label(el['type'])}'),
-                  content: SingleChildScrollView(
-                    child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      if (el['type'] == 'text' || el['type'] == 'button')
-                        TextField(controller: textCtrl, decoration: const InputDecoration(labelText: 'متن', border: OutlineInputBorder())),
-                      if (el['type'] == 'button' || el['type'] == 'image')
-                        TextField(controller: linkCtrl, decoration: const InputDecoration(labelText: 'لینک (اختیاری)', border: OutlineInputBorder())),
-                      const SizedBox(height: 16),
-                      const Text('رنگ:', style: TextStyle(fontWeight: FontWeight.bold)),
-                      Wrap(spacing: 8, runSpacing: 8, children: [
-                        Colors.deepPurple, Colors.blue, Colors.red, Colors.teal, Colors.orange, Colors.purple,
-                      ].map((c) => GestureDetector(
-                        onTap: () => setState(() => el['color'] = c.value),
-                        child: Container(width: 40, height: 40, decoration: BoxDecoration(color: c, shape: BoxShape.circle, border: Border.all(color: el['color'] == c.value ? Colors.black : Colors.transparent, width: 3))),
-                      )).toList()),
-                    ]),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () async {
-                        setState(() {
-                          elements.removeAt(elementIndex);
-                          page['elements'] = elements;
-                          pages[pageIndex] = page;
-                          _app['pages'] = pages;
-                        });
-                        await _saveApp();
-                        if (context.mounted) Navigator.pop(c);
-                      },
-                      child: const Text('حذف', style: TextStyle(color: Colors.red)),
-                    ),
-                    TextButton(onPressed: () => Navigator.pop(c), child: const Text('لغو')),
-                    ElevatedButton(
-                      onPressed: () async {
-                        setState(() {
-                          el['text'] = textCtrl.text;
-                          el['link'] = linkCtrl.text;
-                          elements[elementIndex] = el;
-                          page['elements'] = elements;
-                          pages[pageIndex] = page;
-                          _app['pages'] = pages;
-                        });
-                        await _saveApp();
-                        if (context.mounted) Navigator.pop(c);
-                      },
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6A11CB)),
-                      child: const Text('ذخیره'),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            Widget _buildElement(Map<String, dynamic> el, int pageIndex, int elementIndex) {
-              final editBtn = _editMode
-                  ? Positioned(
-                      top: -8,
-                      left: -8,
-                      child: GestureDetector(
-                        onTap: () => _editElement(pageIndex, elementIndex),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: const BoxDecoration(color: Color(0xFF6A11CB), shape: BoxShape.circle),
-                          child: const Icon(Icons.edit, color: Colors.white, size: 16),
-                        ),
-                      ),
-                    )
-                  : null;
-
-              Widget content;
-              if (el['type'] == 'text') {
-                content = Text(el['text'] ?? '', style: TextStyle(fontSize: 18, color: Color(el['color'] ?? 0xFF000000)));
-              } else if (el['type'] == 'button') {
-                content = SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      if ((el['link'] ?? '').isNotEmpty) {
-                        final uri = Uri.parse(el['link']);
-                        if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('دکمه ${el['text']} زده شد')));
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(el['color'] ?? 0xFF6A11CB),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: Text(el['text'] ?? ''),
-                  ),
-                );
-              } else if (el['type'] == 'image') {
-                content = ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.file(File(el['mediaPath'] ?? ''), errorBuilder: (_, __, ___) => const SizedBox()),
-                );
-              } else {
-                return const SizedBox();
-              }
-
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    content,
-                    if (editBtn != null) editBtn,
-                  ],
-                ),
-              );
-            }
-
             @override
             Widget build(BuildContext context) {
-              if (_app['appType'] == 'wallpaper') {
-                final wps = List<String>.from(_app['wallpapers'] ?? []);
+              if (app['appType'] == 'wallpaper') {
+                final wps = List<String>.from(app['wallpapers'] ?? []);
                 return Scaffold(
-                  appBar: AppBar(title: Text(_app['name'] ?? ''), backgroundColor: Color(_app['themeColor'] ?? 0xFF6A11CB), foregroundColor: Colors.white),
+                  appBar: AppBar(title: Text(app['name'] ?? ''), backgroundColor: Color(app['themeColor'] ?? 0xFF6A11CB), foregroundColor: Colors.white),
                   body: wps.isEmpty ? const Center(child: Text('والپیپری اضافه نشده')) : PageView.builder(
-                    scrollDirection: Axis.vertical,
-                    itemCount: wps.length,
-                    itemBuilder: (c, i) => Stack(
+                    scrollDirection: Axis.vertical, itemCount: wps.length, itemBuilder: (c, i) => Stack(
                       fit: StackFit.expand,
                       children: [
                         Image.file(File(wps[i]), fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image))),
@@ -1488,73 +1333,26 @@ jobs:
                   ),
                 );
               }
-
-              final pages = (_app['pages'] as List? ?? []);
-              if (pages.isEmpty) {
-                return Scaffold(
-                  appBar: AppBar(title: Text(_app['name'] ?? '')),
-                  body: const Center(child: Text('صفحه ای نساخته نشده')),
-                );
-              }
-
+              final pages = (app['pages'] as List? ?? []);
+              if (pages.isEmpty) return Scaffold(appBar: AppBar(title: Text(app['name'] ?? '')), body: const Center(child: Text('صفحه ای نساخته نشده')));
               return Scaffold(
-                appBar: AppBar(
-                  title: Text(_app['name'] ?? ''),
-                  backgroundColor: Color(_app['themeColor'] ?? 0xFF6A11CB),
-                  foregroundColor: Colors.white,
-                  actions: [
-                    IconButton(
-                      icon: Icon(_editMode ? Icons.check : Icons.edit),
-                      tooltip: _editMode ? 'پایان ویرایش' : 'ویرایش المان‌ها',
-                      onPressed: () => setState(() => _editMode = !_editMode),
-                    ),
-                  ],
-                ),
-                body: Column(
-                  children: [
-                    if (_editMode)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(10),
-                        color: const Color(0xFF6A11CB).withOpacity(0.1),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.info_outline, size: 16, color: Color(0xFF6A11CB)),
-                            SizedBox(width: 8),
-                            Text('روی آیکون مداد هر المان بزنید تا ویرایش کنید', style: TextStyle(fontSize: 12, color: Color(0xFF6A11CB))),
-                          ],
-                        ),
-                      ),
-                    Expanded(
-                      child: PageView.builder(
-                        itemCount: pages.length,
-                        itemBuilder: (c, i) {
-                          final page = pages[i];
-                          final els = (page['elements'] as List? ?? []);
-                          return ListView(
-                            padding: const EdgeInsets.all(20),
-                            children: [
-                              Text(page['name'] ?? '', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(_app['themeColor'] ?? 0xFF6A11CB))),
-                              const SizedBox(height: 20),
-                              ...els.asMap().entries.map((entry) => _buildElement(entry.value as Map<String, dynamic>, i, entry.key)),
-                            ],
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
+                appBar: AppBar(title: Text(app['name'] ?? ''), backgroundColor: Color(app['themeColor'] ?? 0xFF6A11CB), foregroundColor: Colors.white),
+                body: PageView.builder(itemCount: pages.length, itemBuilder: (c, i) {
+                  final page = pages[i];
+                  final els = (page['elements'] as List? ?? []);
+                  return ListView(padding: const EdgeInsets.all(20), children: [
+                    Text(page['name'] ?? '', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(app['themeColor'] ?? 0xFF6A11CB))),
+                    const SizedBox(height: 20),
+                    ...els.map((e) {
+                      final el = e as Map<String, dynamic>;
+                      if (el['type'] == 'text') return Padding(padding: const EdgeInsets.only(bottom: 16), child: Text(el['text'] ?? '', style: TextStyle(fontSize: 18, color: Color(el['color'] ?? 0xFF000000))));
+                      if (el['type'] == 'button') return Padding(padding: const EdgeInsets.only(bottom: 16), child: SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () async { if ((el['link'] ?? '').isNotEmpty) { final uri = Uri.parse(el['link']); if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication); } else { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('دکمه ${el['text']} زده شد'))); } }, style: ElevatedButton.styleFrom(backgroundColor: Color(el['color'] ?? 0xFF6A11CB), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)), child: Text(el['text'] ?? ''))));
+                      if (el['type'] == 'image') return Padding(padding: const EdgeInsets.only(bottom: 16), child: ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.file(File(el['mediaPath'] ?? ''), errorBuilder: (_, __, ___) => const SizedBox())));
+                      return const SizedBox();
+                    }),
+                  ]);
+                }),
               );
-            }
-
-            String _label(String? t) {
-              switch (t) {
-                case 'text': return 'متن';
-                case 'button': return 'دکمه';
-                case 'image': return 'تصویر';
-                default: return 'المان';
-              }
             }
           }
 
@@ -1751,7 +1549,7 @@ jobs:
           DART_END
 
       - name: Build APK
-        run: flutter build apk --release --dart-define=BAZAAR_RSA_KEY=${{ secrets.BAZAAR_RSA_KEY }}
+        run: flutter build apk --release --target-platform android-arm,android-arm64,android-x64 --dart-define=BAZAAR_RSA_KEY=${{ secrets.BAZAAR_RSA_KEY }}
 
       - name: Decode Keystore
         run: |
