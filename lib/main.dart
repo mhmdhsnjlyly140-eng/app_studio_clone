@@ -126,6 +126,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     ));
   }
 }
+
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
   @override
@@ -551,6 +552,7 @@ class _MyAppsPageState extends State<MyAppsPage> {
     );
   }
 }
+
 class CreateAppPage extends StatefulWidget {
   final VoidCallback onCreated;
   const CreateAppPage({super.key, required this.onCreated});
@@ -584,6 +586,12 @@ class _CreateAppPageState extends State<CreateAppPage> {
       'themeColor': _color.value,
       'fontFamily': 'default',
       'splashText': '',
+      'splashImage': '',
+      'splashColor': 0xFF6A11CB,
+      'splashDuration': 3,
+      'splashTargetPage': 0,
+      'adiveryKey': '',
+      'tapsellKey': '',
     }));
     await p.setStringList('my_apps', a);
     if (mounted) {
@@ -673,7 +681,6 @@ class _CreateAppPageState extends State<CreateAppPage> {
     ]);
   }
 }
-
 class AppEditorPage extends StatefulWidget {
   final int appIndex;
   const AppEditorPage({super.key, required this.appIndex});
@@ -753,7 +760,7 @@ class _AppEditorPageState extends State<AppEditorPage> {
         _card(Icons.pages, 'صفحات اپ', 'ساخت و ویرایش صفحات', () => _editPages(pages)),
       _card(Icons.preview, 'پیش نمایش', 'مشاهده پیش نمایش اپ', () => Navigator.push(context, MaterialPageRoute(builder: (_) => PreviewPage(app: _app!)))),
       _card(Icons.android, 'خروجی APK', 'به زودی', () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('به زودی! در نظرات درخواست کنید')))),
-      _card(Icons.wallpaper, 'Splash Screen', 'متن شروع اپ', _splashDialog),
+      _card(Icons.wallpaper, 'Splash Screen', 'عکس + متن + مدت زمان', _splashDialog),
       _card(Icons.palette, 'حالت پیشرفته تم', 'رنگ و فونت اپ', _themeDialog),
     ]);
   }
@@ -808,24 +815,155 @@ class _AppEditorPageState extends State<AppEditorPage> {
     });
   }
   void _splashDialog() {
-    final ctrl = TextEditingController(text: _app!['splashText'] ?? '');
-    showDialog(context: context, builder: (c) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('Splash Screen'),
-      content: TextField(controller: ctrl, maxLines: 3, decoration: const InputDecoration(hintText: 'متن شروع اپ', border: OutlineInputBorder())),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(c), child: const Text('لغو')),
-        ElevatedButton(
-          onPressed: () async {
-            _app!['splashText'] = ctrl.text;
-            await _save();
-            if (mounted) Navigator.pop(c);
-          },
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6A11CB)),
-          child: const Text('ذخیره'),
+    final textCtrl = TextEditingController(text: _app!['splashText'] ?? '');
+    Color selectedColor = Color(_app!['splashColor'] ?? 0xFF6A11CB);
+    double duration = (_app!['splashDuration'] ?? 3).toDouble();
+    int targetPage = _app!['splashTargetPage'] ?? 0;
+    String imagePath = _app!['splashImage'] ?? '';
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (c) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(children: [
+            Icon(Icons.wallpaper, color: Color(0xFF6A11CB)),
+            SizedBox(width: 10),
+            Text('طراحی اسپلش'),
+          ]),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('متن اسپلش:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: textCtrl,
+                  decoration: const InputDecoration(
+                    hintText: 'به اپ من خوش آمدید',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text('عکس اسپلش:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                if (imagePath.isNotEmpty)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.file(
+                      File(imagePath),
+                      width: double.infinity,
+                      height: 100,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
+                    ),
+                  ),
+                const SizedBox(height: 6),
+                Row(children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final picker = ImagePicker();
+                        final img = await picker.pickImage(source: ImageSource.gallery);
+                        if (img != null) {
+                          setStateDialog(() => imagePath = img.path);
+                        }
+                      },
+                      icon: const Icon(Icons.image),
+                      label: const Text('انتخاب عکس'),
+                    ),
+                  ),
+                  if (imagePath.isNotEmpty)
+                    IconButton(
+                      onPressed: () => setStateDialog(() => imagePath = ''),
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                    ),
+                ]),
+                const SizedBox(height: 16),
+                const Text('رنگ پس‌زمینه:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    Colors.deepPurple,
+                    Colors.blue,
+                    Colors.red,
+                    Colors.teal,
+                    Colors.orange,
+                    Colors.purple,
+                    Colors.pink,
+                    Colors.green,
+                    Colors.black,
+                    Colors.white,
+                  ].map((color) => GestureDetector(
+                    onTap: () => setStateDialog(() => selectedColor = color),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: selectedColor == color ? Colors.blue : Colors.grey.shade300,
+                          width: selectedColor == color ? 3 : 1,
+                        ),
+                      ),
+                    ),
+                  )).toList(),
+                ),
+                const SizedBox(height: 16),
+                Text('مدت زمان: ${duration.toInt()} ثانیه', style: const TextStyle(fontWeight: FontWeight.bold)),
+                Slider(
+                  value: duration,
+                  min: 1,
+                  max: 10,
+                  divisions: 9,
+                  label: '${duration.toInt()}',
+                  activeColor: const Color(0xFF6A11CB),
+                  onChanged: (v) => setStateDialog(() => duration = v),
+                ),
+                const SizedBox(height: 8),
+                const Text('صفحه بعد از اسپلش:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                DropdownButton<int>(
+                  value: targetPage,
+                  isExpanded: true,
+                  items: [
+                    for (int i = 0; i < (_app!['pages'] as List? ?? []).length; i++)
+                      DropdownMenuItem(
+                        value: i,
+                        child: Text((_app!['pages'] as List)[i]['name'] ?? 'صفحه ${i + 1}'),
+                      ),
+                  ],
+                  onChanged: (v) => setStateDialog(() => targetPage = v ?? 0),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(c),
+              child: const Text('لغو', style: TextStyle(color: Colors.red)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                _app!['splashText'] = textCtrl.text;
+                _app!['splashImage'] = imagePath;
+                _app!['splashColor'] = selectedColor.value;
+                _app!['splashDuration'] = duration.toInt();
+                _app!['splashTargetPage'] = targetPage;
+                await _save();
+                if (mounted) Navigator.pop(c);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6A11CB)),
+              child: const Text('ذخیره'),
+            ),
+          ],
         ),
-      ],
-    ));
+      ),
+    );
   }
   Widget _adsTab() {
     if (!_hasAccess) {
@@ -1078,6 +1216,7 @@ class PageEditorPage extends StatefulWidget {
 }
 class _PageEditorPageState extends State<PageEditorPage> {
   Map<String, dynamic>? _page;
+  List _allPages = [];
   @override
   void initState() { super.initState(); _load(); }
   Future<void> _load() async {
@@ -1086,6 +1225,7 @@ class _PageEditorPageState extends State<PageEditorPage> {
     if (widget.appIndex < a.length) {
       final app = jsonDecode(a[widget.appIndex]) as Map<String, dynamic>;
       final pages = List.from(app['pages'] ?? []);
+      setState(() => _allPages = pages);
       if (widget.pageIndex < pages.length) setState(() => _page = Map<String, dynamic>.from(pages[widget.pageIndex]));
     }
   }
@@ -1109,34 +1249,49 @@ class _PageEditorPageState extends State<PageEditorPage> {
   void _moveElement(int i, int delta) { final e = List.from(_page!['elements']); if (i + delta < 0 || i + delta >= e.length) return; final t = e[i]; e[i] = e[i + delta]; e[i + delta] = t; setState(() => _page!['elements'] = e); _save(); }
   void _editElement(int i) {
     final el = Map<String, dynamic>.from(_page!['elements'][i]);
-    showDialog(context: context, builder: (c) {
-      final textCtrl = TextEditingController(text: el['text'] ?? '');
-      final linkCtrl = TextEditingController(text: el['link'] ?? '');
-      return AlertDialog(
+    final textCtrl = TextEditingController(text: el['text'] ?? '');
+    final linkCtrl = TextEditingController(text: el['link'] ?? '');
+    int targetPage = el['targetPage'] ?? 0;
+    showDialog(context: context, builder: (c) => StatefulBuilder(
+      builder: (context, setStateDialog) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('ویرایش ${_label(el['type'])}'),
         content: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             if (el['type'] == 'text' || el['type'] == 'button')
               TextField(controller: textCtrl, decoration: const InputDecoration(labelText: 'متن', border: OutlineInputBorder())),
             if (el['type'] == 'button' || el['type'] == 'image' || el['type'] == 'video' || el['type'] == 'audio')
               TextField(controller: linkCtrl, decoration: const InputDecoration(labelText: 'لینک (اختیاری)', border: OutlineInputBorder())),
+            if (el['type'] == 'nextpage') ...[
+              const SizedBox(height: 12),
+              const Text('صفحه مقصد:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              DropdownButton<int>(
+                value: targetPage < _allPages.length ? targetPage : 0,
+                isExpanded: true,
+                items: [
+                  for (int j = 0; j < _allPages.length; j++)
+                    DropdownMenuItem(value: j, child: Text(_allPages[j]['name'] ?? 'صفحه ${j + 1}')),
+                ],
+                onChanged: (v) => setStateDialog(() => targetPage = v ?? 0),
+              ),
+            ],
             const SizedBox(height: 16),
             const Text('رنگ:', style: TextStyle(fontWeight: FontWeight.bold)),
             Wrap(spacing: 8, runSpacing: 8, children: [
               Colors.deepPurple, Colors.blue, Colors.red, Colors.teal, Colors.orange, Colors.purple,
             ].map((c) => GestureDetector(
-              onTap: () => el['color'] = c.value,
+              onTap: () => setStateDialog(() => el['color'] = c.value),
               child: Container(width: 40, height: 40, decoration: BoxDecoration(color: c, shape: BoxShape.circle, border: Border.all(color: el['color'] == c.value ? Colors.black : Colors.transparent, width: 3))),
             )).toList()),
           ]),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(c), child: const Text('لغو')),
-          ElevatedButton(onPressed: () { setState(() { el['text'] = textCtrl.text; el['link'] = linkCtrl.text; _page!['elements'][i] = el; }); _save(); Navigator.pop(c); }, style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6A11CB)), child: const Text('ذخیره')),
+          ElevatedButton(onPressed: () { setState(() { el['text'] = textCtrl.text; el['link'] = linkCtrl.text; el['targetPage'] = targetPage; _page!['elements'][i] = el; }); _save(); Navigator.pop(c); }, style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6A11CB)), child: const Text('ذخیره')),
         ],
-      );
-    });
+      ),
+    ));
   }
   @override
   Widget build(BuildContext context) {
@@ -1147,10 +1302,15 @@ class _PageEditorPageState extends State<PageEditorPage> {
       body: elements.isEmpty ? const Center(child: Text('هنوز المانی اضافه نشده', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: Colors.grey))) : ListView.builder(
         padding: const EdgeInsets.all(16), itemCount: elements.length, itemBuilder: (c, i) {
           final el = elements[i];
+          String subtitle = el['text'] ?? el['link'] ?? '';
+          if (el['type'] == 'nextpage') {
+            final t = el['targetPage'] ?? 0;
+            subtitle = t < _allPages.length ? 'مقصد: ${_allPages[t]['name']}' : 'مقصد: صفحه اول';
+          }
           return Card(margin: const EdgeInsets.only(bottom: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)), child: ListTile(
             leading: Icon(_icon(el['type']), color: const Color(0xFF6A11CB)),
             title: Text(_label(el['type'])),
-            subtitle: Text(el['text'] ?? el['link'] ?? ''),
+            subtitle: Text(subtitle),
             onTap: () => _editElement(i),
             trailing: Row(mainAxisSize: MainAxisSize.min, children: [
               IconButton(icon: const Icon(Icons.arrow_upward, size: 18), onPressed: () => _moveElement(i, -1)),
@@ -1201,9 +1361,40 @@ class _PageEditorPageState extends State<PageEditorPage> {
   }
 }
 
-class PreviewPage extends StatelessWidget {
+class PreviewPage extends StatefulWidget {
   final Map<String, dynamic> app;
   const PreviewPage({super.key, required this.app});
+  @override
+  State<PreviewPage> createState() => _PreviewPageState();
+}
+class _PreviewPageState extends State<PreviewPage> {
+  late Map<String, dynamic> _app;
+  bool _showSplash = true;
+  int _currentPageIndex = 0;
+  @override
+  void initState() {
+    super.initState();
+    _app = Map<String, dynamic>.from(widget.app);
+    _startSplashTimer();
+  }
+  void _startSplashTimer() {
+    final duration = (_app['splashDuration'] ?? 3) as int;
+    final targetPage = (_app['splashTargetPage'] ?? 0) as int;
+    Future.delayed(Duration(seconds: duration), () {
+      if (mounted) {
+        setState(() {
+          _showSplash = false;
+          _currentPageIndex = targetPage;
+        });
+      }
+    });
+  }
+  void _goToPage(int index) {
+    final pages = (_app['pages'] as List? ?? []);
+    if (index >= 0 && index < pages.length) {
+      setState(() => _currentPageIndex = index);
+    }
+  }
   Future<void> _downloadWallpaper(BuildContext context, String path, int index) async {
     try {
       await Gal.putImage(path, album: 'AppLand');
@@ -1220,14 +1411,143 @@ class PreviewPage extends StatelessWidget {
       }
     }
   }
+  Widget _buildSplash() {
+    final splashColor = Color(_app['splashColor'] ?? 0xFF6A11CB);
+    final splashText = _app['splashText'] ?? _app['name'] ?? '';
+    final splashImage = _app['splashImage'] ?? '';
+    return Container(
+      color: splashColor,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (splashImage.isNotEmpty)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(30),
+                child: Image.file(
+                  File(splashImage),
+                  width: 150,
+                  height: 150,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 100, color: Colors.white54),
+                ),
+              )
+            else
+              const Icon(Icons.apps, size: 100, color: Colors.white),
+            const SizedBox(height: 30),
+            if (splashText.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 30),
+                child: Text(
+                  splashText,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+              ),
+            const SizedBox(height: 40),
+            const SizedBox(
+              width: 30,
+              height: 30,
+              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  Widget _buildPageContent(Map<String, dynamic> page, int pageIndex) {
+    final elements = (page['elements'] as List? ?? []);
+    final pages = (_app['pages'] as List? ?? []);
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        Text(
+          page['name'] ?? '',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(_app['themeColor'] ?? 0xFF6A11CB)),
+        ),
+        const SizedBox(height: 20),
+        ...elements.asMap().entries.map((entry) {
+          final el = entry.value as Map<String, dynamic>;
+          final type = el['type'];
+          if (type == 'text') {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Text(el['text'] ?? '', style: TextStyle(fontSize: 18, color: Color(el['color'] ?? 0xFF000000))),
+            );
+          }
+          if (type == 'button') {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    final link = el['link'] ?? '';
+                    if (link.isNotEmpty) {
+                      final uri = Uri.parse(link);
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }
+                    } else {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('دکمه ${el['text']} زده شد')));
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(el['color'] ?? 0xFF6A11CB),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: Text(el['text'] ?? ''),
+                ),
+              ),
+            );
+          }
+          if (type == 'image') {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.file(File(el['mediaPath'] ?? ''), errorBuilder: (_, __, ___) => const SizedBox()),
+              ),
+            );
+          }
+          if (type == 'nextpage') {
+            final target = el['targetPage'] ?? 0;
+            final targetPage = (target >= 0 && target < pages.length) ? pages[target] : null;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _goToPage(target),
+                  icon: const Icon(Icons.arrow_forward),
+                  label: Text(targetPage != null ? 'برو به ${targetPage['name']}' : 'صفحه بعد'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(el['color'] ?? 0xFF6A11CB),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              ),
+            );
+          }
+          return const SizedBox();
+        }),
+      ],
+    );
+  }
   @override
   Widget build(BuildContext context) {
-    if (app['appType'] == 'wallpaper') {
-      final wps = List<String>.from(app['wallpapers'] ?? []);
+    if (_app['appType'] == 'wallpaper') {
+      final wps = List<String>.from(_app['wallpapers'] ?? []);
       return Scaffold(
-        appBar: AppBar(title: Text(app['name'] ?? ''), backgroundColor: Color(app['themeColor'] ?? 0xFF6A11CB), foregroundColor: Colors.white),
+        appBar: AppBar(title: Text(_app['name'] ?? ''), backgroundColor: Color(_app['themeColor'] ?? 0xFF6A11CB), foregroundColor: Colors.white),
         body: wps.isEmpty ? const Center(child: Text('والپیپری اضافه نشده')) : PageView.builder(
-          scrollDirection: Axis.vertical, itemCount: wps.length, itemBuilder: (c, i) => Stack(
+          scrollDirection: Axis.vertical,
+          itemCount: wps.length,
+          itemBuilder: (c, i) => Stack(
             fit: StackFit.expand,
             children: [
               Image.file(File(wps[i]), fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image))),
@@ -1245,25 +1565,26 @@ class PreviewPage extends StatelessWidget {
         ),
       );
     }
-    final pages = (app['pages'] as List? ?? []);
-    if (pages.isEmpty) return Scaffold(appBar: AppBar(title: Text(app['name'] ?? '')), body: const Center(child: Text('صفحه ای نساخته نشده')));
+    final pages = (_app['pages'] as List? ?? []);
+    if (pages.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: Text(_app['name'] ?? '')),
+        body: const Center(child: Text('صفحه ای نساخته نشده')),
+      );
+    }
+    if (_showSplash) {
+      return Scaffold(body: _buildSplash());
+    }
+    if (_currentPageIndex >= pages.length) {
+      _currentPageIndex = 0;
+    }
     return Scaffold(
-      appBar: AppBar(title: Text(app['name'] ?? ''), backgroundColor: Color(app['themeColor'] ?? 0xFF6A11CB), foregroundColor: Colors.white),
-      body: PageView.builder(itemCount: pages.length, itemBuilder: (c, i) {
-        final page = pages[i];
-        final els = (page['elements'] as List? ?? []);
-        return ListView(padding: const EdgeInsets.all(20), children: [
-          Text(page['name'] ?? '', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(app['themeColor'] ?? 0xFF6A11CB))),
-          const SizedBox(height: 20),
-          ...els.map((e) {
-            final el = e as Map<String, dynamic>;
-            if (el['type'] == 'text') return Padding(padding: const EdgeInsets.only(bottom: 16), child: Text(el['text'] ?? '', style: TextStyle(fontSize: 18, color: Color(el['color'] ?? 0xFF000000))));
-            if (el['type'] == 'button') return Padding(padding: const EdgeInsets.only(bottom: 16), child: SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () async { if ((el['link'] ?? '').isNotEmpty) { final uri = Uri.parse(el['link']); if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication); } else { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('دکمه ${el['text']} زده شد'))); } }, style: ElevatedButton.styleFrom(backgroundColor: Color(el['color'] ?? 0xFF6A11CB), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)), child: Text(el['text'] ?? ''))));
-            if (el['type'] == 'image') return Padding(padding: const EdgeInsets.only(bottom: 16), child: ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.file(File(el['mediaPath'] ?? ''), errorBuilder: (_, __, ___) => const SizedBox())));
-            return const SizedBox();
-          }),
-        ]);
-      }),
+      appBar: AppBar(
+        title: Text(pages[_currentPageIndex]['name'] ?? _app['name'] ?? ''),
+        backgroundColor: Color(_app['themeColor'] ?? 0xFF6A11CB),
+        foregroundColor: Colors.white,
+      ),
+      body: _buildPageContent(pages[_currentPageIndex] as Map<String, dynamic>, _currentPageIndex),
     );
   }
 }
