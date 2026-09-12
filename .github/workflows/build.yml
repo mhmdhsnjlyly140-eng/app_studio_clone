@@ -29,6 +29,30 @@ jobs:
           sed -i 's|android:label="appland"|android:label="اپ‌لند"|' android/app/src/main/AndroidManifest.xml || true
           sed -i 's|ndkVersion = flutter.ndkVersion|ndkVersion = "27.0.12077973"|' android/app/build.gradle.kts || true
           sed -i 's|minSdk = flutter.minSdkVersion|minSdk = 24|' android/app/build.gradle.kts || true
+          sed -i 's|versionCode = flutter.versionCode|versionCode = 2|' android/app/build.gradle.kts || true
+          sed -i 's|versionName = flutter.versionName|versionName = "1.0.1"|' android/app/build.gradle.kts || true
+          python3 - << 'PYEOF'
+          path = 'android/app/build.gradle.kts'
+          with open(path, 'r', encoding='utf-8') as f:
+              content = f.read()
+          abi_block = '''
+          android {
+              defaultConfig {
+                  ndk {
+                      abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86_64"))
+                  }
+              }
+          }
+          '''
+          content = content + "\n" + abi_block
+          with open(path, 'w', encoding='utf-8') as f:
+              f.write(content)
+          PYEOF
+
+      - name: Set App Version
+        run: |
+          sed -i 's|^version: 1.0.0+1|version: 1.0.1+2|' pubspec.yaml
+          grep "^version:" pubspec.yaml
 
       - name: Add Permissions
         run: |
@@ -396,7 +420,7 @@ jobs:
                   const SizedBox(height: 16),
                   _buildButton(context, 'پشتیبانی', Icons.support_agent, () => _openRubika(context, 'https://rubikabot.ir/support_1i'), false),
                   const SizedBox(height: 35),
-                  const Text('نسخه ۱.۰.۰', style: TextStyle(fontSize: 14, color: Colors.white54)),
+                  const Text('نسخه ۱.۰.۱', style: TextStyle(fontSize: 14, color: Colors.white54)),
                   const SizedBox(height: 20),
                 ]))),
               );
@@ -1674,7 +1698,7 @@ jobs:
                 final timeStr = '${now.hour.toString().padLeft(2, '0')}-${now.minute.toString().padLeft(2, '0')}';
                 final backupData = {
                   'app': 'AppLand',
-                  'version': '1.0.0',
+                  'version': '1.0.1',
                   'date': '$dateStr $timeStr',
                   'appsCount': appsList.length,
                   'apps': appsList.map((e) => jsonDecode(e)).toList(),
@@ -1862,7 +1886,7 @@ jobs:
                   Card(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)), child: ListTile(
                     leading: const Icon(Icons.info, color: Color(0xFF6A11CB)),
                     title: const Text('درباره اپ لند'),
-                    onTap: () => showAboutDialog(context: context, applicationName: 'اپ لند', applicationVersion: '1.0.0', children: const [
+                    onTap: () => showAboutDialog(context: context, applicationName: 'اپ لند', applicationVersion: '1.0.1', children: const [
                       Text('با اپ لند بدون کدنویسی، اپ اندروید بسازید!'),
                       SizedBox(height: 8),
                       Text('امکانات: ساخت اپ (محتوا محور/والپیپر)، صفحه ساز، تبلیغات، پرداخت درون برنامه ای، تم پیشرفته، فونت دلخواه و...'),
@@ -1875,7 +1899,7 @@ jobs:
           DART_END
 
       - name: Build APK
-        run: flutter build apk --release --target-platform android-arm,android-arm64,android-x64 --dart-define=BAZAAR_RSA_KEY=${{ secrets.BAZAAR_RSA_KEY }}
+        run: flutter build apk --release --dart-define=BAZAAR_RSA_KEY=${{ secrets.BAZAAR_RSA_KEY }}
 
       - name: Decode Keystore
         run: |
