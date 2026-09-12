@@ -57,7 +57,7 @@ jobs:
           flutter pub add gal
           flutter pub add path_provider
           flutter pub add share_plus
-          flutter pub add file_picker
+          flutter pub add "file_picker:^8.1.2"
 
       - name: Add JitPack
         run: |
