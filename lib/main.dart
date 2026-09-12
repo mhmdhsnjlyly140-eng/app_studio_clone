@@ -7,6 +7,8 @@ import 'package:gal/gal.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:video_player/video_player.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -332,6 +334,49 @@ class HomePage extends StatelessWidget {
       ),
     );
   }
+}
+
+// ═══════════════════════════════════════════
+// اکشن‌های دکمه
+// ═══════════════════════════════════════════
+const List<Map<String, String>> actionTypes = [
+  {'id': 'none', 'name': 'بدون عملکرد', 'icon': 'block'},
+  {'id': 'open_link', 'name': 'باز کردن لینک', 'icon': 'link'},
+  {'id': 'go_page', 'name': 'رفتن به صفحه', 'icon': 'arrow_forward'},
+  {'id': 'close_page', 'name': 'بستن صفحه', 'icon': 'close'},
+  {'id': 'close_app', 'name': 'بستن اپ', 'icon': 'exit'},
+  {'id': 'share', 'name': 'اشتراک‌گذاری', 'icon': 'share'},
+  {'id': 'rate', 'name': 'ارسال نظر', 'icon': 'star'},
+  {'id': 'show_dialog', 'name': 'نمایش دیالوگ', 'icon': 'message'},
+  {'id': 'play_video', 'name': 'پخش فیلم', 'icon': 'video'},
+  {'id': 'show_image', 'name': 'نمایش تصویر', 'icon': 'image'},
+  {'id': 'play_audio', 'name': 'پخش صدا', 'icon': 'music'},
+  {'id': 'download', 'name': 'دانلود از اینترنت', 'icon': 'download'},
+];
+
+IconData getActionIcon(String? id) {
+  switch (id) {
+    case 'none': return Icons.block;
+    case 'open_link': return Icons.link;
+    case 'go_page': return Icons.arrow_forward;
+    case 'close_page': return Icons.close;
+    case 'close_app': return Icons.exit_to_app;
+    case 'share': return Icons.share;
+    case 'rate': return Icons.star;
+    case 'show_dialog': return Icons.message;
+    case 'play_video': return Icons.video_library;
+    case 'show_image': return Icons.image;
+    case 'play_audio': return Icons.music_note;
+    case 'download': return Icons.download;
+    default: return Icons.widgets;
+  }
+}
+
+String getActionName(String? id) {
+  for (final a in actionTypes) {
+    if (a['id'] == id) return a['name']!;
+  }
+  return 'نامشخص';
 }
 class MyAppsPage extends StatefulWidget {
   const MyAppsPage({super.key});
@@ -1570,7 +1615,19 @@ class _PageEditorPageState extends State<PageEditorPage> {
   }
   void _addElement(String type) {
     final elements = List.from(_page!['elements'] ?? []);
-    elements.add({'type': type, 'text': '', 'link': '', 'mediaPath': '', 'color': 0xFF6A11CB, 'textColor': 0xFFFFFFFF, 'items': [], 'targetPage': 0});
+    elements.add({
+      'type': type,
+      'text': '',
+      'link': '',
+      'mediaPath': '',
+      'mediaSource': 'link',
+      'color': 0xFF6A11CB,
+      'textColor': 0xFFFFFFFF,
+      'items': [],
+      'targetPage': 0,
+      'action': 'open_link',
+      'actionValue': '',
+    });
     _page!['elements'] = elements;
     setState(() {}); _save();
   }
@@ -1580,47 +1637,136 @@ class _PageEditorPageState extends State<PageEditorPage> {
     final el = Map<String, dynamic>.from(_page!['elements'][i]);
     final textCtrl = TextEditingController(text: el['text'] ?? '');
     final linkCtrl = TextEditingController(text: el['link'] ?? '');
+    final actionValueCtrl = TextEditingController(text: el['actionValue'] ?? '');
+    String mediaSource = el['mediaSource'] ?? 'link';
+    String mediaPath = el['mediaPath'] ?? '';
     int targetPage = el['targetPage'] ?? 0;
-    showDialog(context: context, builder: (c) => StatefulBuilder(
-      builder: (context, setStateDialog) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('ویرایش ${_label(el['type'])}'),
-        content: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            if (el['type'] == 'text' || el['type'] == 'button')
-              TextField(controller: textCtrl, decoration: const InputDecoration(labelText: 'متن', border: OutlineInputBorder())),
-            if (el['type'] == 'button' || el['type'] == 'image' || el['type'] == 'video' || el['type'] == 'audio')
-              TextField(controller: linkCtrl, decoration: const InputDecoration(labelText: 'لینک (اختیاری)', border: OutlineInputBorder())),
-            if (el['type'] == 'nextpage') ...[
-              const SizedBox(height: 12),
-              const Text('صفحه مقصد:', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 6),
-              DropdownButton<int>(
-                value: targetPage < _allPages.length ? targetPage : 0,
-                isExpanded: true,
-                items: [
-                  for (int j = 0; j < _allPages.length; j++)
-                    DropdownMenuItem(value: j, child: Text(_allPages[j]['name'] ?? 'صفحه ${j + 1}')),
+    String action = el['action'] ?? 'open_link';
+    showDialog(
+      context: context,
+      builder: (c) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('ویرایش ${_label(el['type'])}'),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              if (el['type'] == 'text' || el['type'] == 'button')
+                TextField(controller: textCtrl, decoration: const InputDecoration(labelText: 'متن', border: OutlineInputBorder())),
+              if (el['type'] == 'image')
+                TextField(controller: linkCtrl, decoration: const InputDecoration(labelText: 'لینک تصویر (اختیاری)', border: OutlineInputBorder())),
+              if (el['type'] == 'video' || el['type'] == 'audio') ...[
+                const SizedBox(height: 8),
+                const Text('منبع:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                Row(children: [
+                  ChoiceChip(
+                    label: const Text('از لینک'),
+                    selected: mediaSource == 'link',
+                    onSelected: (v) => setStateDialog(() => mediaSource = 'link'),
+                  ),
+                  const SizedBox(width: 8),
+                  ChoiceChip(
+                    label: const Text('از گالری'),
+                    selected: mediaSource == 'gallery',
+                    onSelected: (v) => setStateDialog(() => mediaSource = 'gallery'),
+                  ),
+                ]),
+                const SizedBox(height: 8),
+                if (mediaSource == 'link')
+                  TextField(controller: linkCtrl, decoration: const InputDecoration(labelText: 'لینک (URL)', border: OutlineInputBorder()))
+                else ...[
+                  if (mediaPath.isNotEmpty)
+                    Text('فایل انتخاب شده: ${mediaPath.split('/').last}', style: const TextStyle(fontSize: 12, color: Colors.green)),
+                  const SizedBox(height: 6),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final picker = ImagePicker();
+                      final XFile? file = el['type'] == 'video'
+                        ? await picker.pickVideo(source: ImageSource.gallery)
+                        : null;
+                      if (file != null) {
+                        setStateDialog(() => mediaPath = file.path);
+                      }
+                    },
+                    icon: const Icon(Icons.folder_open),
+                    label: const Text('انتخاب از گالری'),
+                  ),
                 ],
-                onChanged: (v) => setStateDialog(() => targetPage = v ?? 0),
-              ),
-            ],
-            const SizedBox(height: 16),
-            const Text('رنگ:', style: TextStyle(fontWeight: FontWeight.bold)),
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              Colors.deepPurple, Colors.blue, Colors.red, Colors.teal, Colors.orange, Colors.purple,
-            ].map((c) => GestureDetector(
-              onTap: () => setStateDialog(() => el['color'] = c.value),
-              child: Container(width: 40, height: 40, decoration: BoxDecoration(color: c, shape: BoxShape.circle, border: Border.all(color: el['color'] == c.value ? Colors.black : Colors.transparent, width: 3))),
-            )).toList()),
-          ]),
+              ],
+              if (el['type'] == 'button' || el['type'] == 'purchase') ...[
+                const SizedBox(height: 12),
+                const Text('عملکرد:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                DropdownButton<String>(
+                  value: action,
+                  isExpanded: true,
+                  items: actionTypes.map((a) => DropdownMenuItem(value: a['id'], child: Text(a['name']!))).toList(),
+                  onChanged: (v) => setStateDialog(() => action = v ?? 'none'),
+                ),
+                const SizedBox(height: 8),
+                if (action == 'open_link' || action == 'play_video' || action == 'play_audio' || action == 'show_image' || action == 'download')
+                  TextField(controller: actionValueCtrl, decoration: const InputDecoration(labelText: 'لینک / مقدار', border: OutlineInputBorder())),
+                if (action == 'go_page')
+                  DropdownButton<int>(
+                    value: targetPage < _allPages.length ? targetPage : 0,
+                    isExpanded: true,
+                    items: [
+                      for (int j = 0; j < _allPages.length; j++)
+                        DropdownMenuItem(value: j, child: Text(_allPages[j]['name'] ?? 'صفحه ${j + 1}')),
+                    ],
+                    onChanged: (v) => setStateDialog(() => targetPage = v ?? 0),
+                  ),
+                if (action == 'show_dialog')
+                  TextField(controller: actionValueCtrl, decoration: const InputDecoration(labelText: 'متن دیالوگ', border: OutlineInputBorder())),
+              ],
+              if (el['type'] == 'nextpage') ...[
+                const SizedBox(height: 12),
+                const Text('صفحه مقصد:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                DropdownButton<int>(
+                  value: targetPage < _allPages.length ? targetPage : 0,
+                  isExpanded: true,
+                  items: [
+                    for (int j = 0; j < _allPages.length; j++)
+                      DropdownMenuItem(value: j, child: Text(_allPages[j]['name'] ?? 'صفحه ${j + 1}')),
+                  ],
+                  onChanged: (v) => setStateDialog(() => targetPage = v ?? 0),
+                ),
+              ],
+              const SizedBox(height: 16),
+              const Text('رنگ:', style: TextStyle(fontWeight: FontWeight.bold)),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                Colors.deepPurple, Colors.blue, Colors.red, Colors.teal, Colors.orange, Colors.purple,
+              ].map((c) => GestureDetector(
+                onTap: () => setStateDialog(() => el['color'] = c.value),
+                child: Container(width: 40, height: 40, decoration: BoxDecoration(color: c, shape: BoxShape.circle, border: Border.all(color: el['color'] == c.value ? Colors.black : Colors.transparent, width: 3))),
+              )).toList()),
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(c), child: const Text('لغو')),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  el['text'] = textCtrl.text;
+                  el['link'] = linkCtrl.text;
+                  el['mediaSource'] = mediaSource;
+                  el['mediaPath'] = mediaPath;
+                  el['targetPage'] = targetPage;
+                  el['action'] = action;
+                  el['actionValue'] = actionValueCtrl.text;
+                  _page!['elements'][i] = el;
+                });
+                _save();
+                Navigator.pop(c);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6A11CB)),
+              child: const Text('ذخیره'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c), child: const Text('لغو')),
-          ElevatedButton(onPressed: () { setState(() { el['text'] = textCtrl.text; el['link'] = linkCtrl.text; el['targetPage'] = targetPage; _page!['elements'][i] = el; }); _save(); Navigator.pop(c); }, style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6A11CB)), child: const Text('ذخیره')),
-        ],
       ),
-    ));
+    );
   }
   @override
   Widget build(BuildContext context) {
@@ -1635,6 +1781,10 @@ class _PageEditorPageState extends State<PageEditorPage> {
           if (el['type'] == 'nextpage') {
             final t = el['targetPage'] ?? 0;
             subtitle = t < _allPages.length ? 'مقصد: ${_allPages[t]['name']}' : 'مقصد: صفحه اول';
+          } else if (el['type'] == 'video' || el['type'] == 'audio') {
+            subtitle = el['mediaSource'] == 'gallery' ? 'از گالری: ${(el['mediaPath'] ?? '').split('/').last}' : 'از لینک: ${el['link'] ?? ''}';
+          } else if (el['type'] == 'button') {
+            subtitle = '${el['text'] ?? ''} • ${getActionName(el['action'])}';
           }
           return Card(margin: const EdgeInsets.only(bottom: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)), child: ListTile(
             leading: Icon(_icon(el['type']), color: const Color(0xFF6A11CB)),
@@ -1783,9 +1933,184 @@ class _PreviewPageState extends State<PreviewPage> {
       ),
     );
   }
+  Future<void> _handleAction(String action, String value, int targetPage) async {
+    switch (action) {
+      case 'none':
+        break;
+      case 'open_link':
+        if (value.isNotEmpty) {
+          final uri = Uri.parse(value);
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        }
+        break;
+      case 'go_page':
+        _goToPage(targetPage);
+        break;
+      case 'close_page':
+        if (Navigator.canPop(context)) Navigator.pop(context);
+        break;
+      case 'close_app':
+        if (mounted) {
+          SystemNavigator.pop();
+        }
+        break;
+      case 'share':
+        await Share.share('اپ ${_app['name'] ?? ''} رو نصب کن!');
+        break;
+      case 'rate':
+        final uri = Uri.parse('bazaar://details?id=${_app['packageName'] ?? ''}');
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('کافه‌بازار نصب نیست')));
+          }
+        }
+        break;
+      case 'show_dialog':
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (c) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              content: Text(value.isNotEmpty ? value : 'پیام'),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(c), child: const Text('بستن')),
+              ],
+            ),
+          );
+        }
+        break;
+      case 'play_video':
+      case 'play_audio':
+      case 'show_image':
+      case 'download':
+        if (value.isNotEmpty) {
+          final uri = Uri.parse(value);
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        }
+        break;
+    }
+  }
+  Widget _buildElement(Map<String, dynamic> el) {
+    final type = el['type'];
+    final action = el['action'] ?? 'open_link';
+    final actionValue = el['actionValue'] ?? '';
+    final targetPage = el['targetPage'] ?? 0;
+    if (type == 'text') {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Text(el['text'] ?? '', style: TextStyle(fontSize: 18, color: Color(el['color'] ?? 0xFF000000))),
+      );
+    }
+    if (type == 'button') {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () => _handleAction(action, actionValue, targetPage),
+            icon: Icon(getActionIcon(action), size: 18),
+            label: Text(el['text'] ?? 'دکمه'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(el['color'] ?? 0xFF6A11CB),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+        ),
+      );
+    }
+    if (type == 'image') {
+      final src = el['mediaSource'] ?? 'link';
+      final src_val = src == 'gallery' ? (el['mediaPath'] ?? '') : (el['link'] ?? '');
+      if (src_val.isEmpty) return const SizedBox();
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: src == 'gallery'
+            ? Image.file(File(src_val), errorBuilder: (_, __, ___) => const SizedBox())
+            : Image.network(src_val, errorBuilder: (_, __, ___) => const SizedBox()),
+        ),
+      );
+    }
+    if (type == 'video') {
+      final src = el['mediaSource'] ?? 'link';
+      final src_val = src == 'gallery' ? (el['mediaPath'] ?? '') : (el['link'] ?? '');
+      if (src_val.isEmpty) return const SizedBox();
+      if (src == 'gallery') {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: _VideoPlayerWidget(path: src_val),
+        );
+      } else {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: ListTile(
+              leading: const Icon(Icons.play_circle, color: Color(0xFF6A11CB), size: 40),
+              title: const Text('پخش فیلم'),
+              subtitle: Text(src_val),
+              onTap: () => _handleAction('play_video', src_val, targetPage),
+            ),
+          ),
+        );
+      }
+    }
+    if (type == 'audio') {
+      final src = el['mediaSource'] ?? 'link';
+      final src_val = src == 'gallery' ? (el['mediaPath'] ?? '') : (el['link'] ?? '');
+      if (src_val.isEmpty) return const SizedBox();
+      if (src == 'gallery') {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: _AudioPlayerWidget(path: src_val),
+        );
+      } else {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: ListTile(
+              leading: const Icon(Icons.music_note, color: Color(0xFF6A11CB), size: 40),
+              title: const Text('پخش موزیک'),
+              subtitle: Text(src_val),
+              onTap: () => _handleAction('play_audio', src_val, targetPage),
+            ),
+          ),
+        );
+      }
+    }
+    if (type == 'nextpage') {
+      final pages = (_app['pages'] as List? ?? []);
+      final targetPageName = (targetPage >= 0 && targetPage < pages.length) ? pages[targetPage]['name'] : null;
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () => _goToPage(targetPage),
+            icon: const Icon(Icons.arrow_forward),
+            label: Text(targetPageName != null ? 'برو به $targetPageName' : 'صفحه بعد'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(el['color'] ?? 0xFF6A11CB),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+        ),
+      );
+    }
+    return const SizedBox();
+  }
   Widget _buildPageContent(Map<String, dynamic> page, int pageIndex) {
     final elements = (page['elements'] as List? ?? []);
-    final pages = (_app['pages'] as List? ?? []);
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
@@ -1794,75 +2119,7 @@ class _PreviewPageState extends State<PreviewPage> {
           style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(_app['themeColor'] ?? 0xFF6A11CB)),
         ),
         const SizedBox(height: 20),
-        ...elements.asMap().entries.map((entry) {
-          final el = entry.value as Map<String, dynamic>;
-          final type = el['type'];
-          if (type == 'text') {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Text(el['text'] ?? '', style: TextStyle(fontSize: 18, color: Color(el['color'] ?? 0xFF000000))),
-            );
-          }
-          if (type == 'button') {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    final link = el['link'] ?? '';
-                    if (link.isNotEmpty) {
-                      final uri = Uri.parse(link);
-                      if (await canLaunchUrl(uri)) {
-                        await launchUrl(uri, mode: LaunchMode.externalApplication);
-                      }
-                    } else {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('دکمه ${el['text']} زده شد')));
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(el['color'] ?? 0xFF6A11CB),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: Text(el['text'] ?? ''),
-                ),
-              ),
-            );
-          }
-          if (type == 'image') {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(File(el['mediaPath'] ?? ''), errorBuilder: (_, __, ___) => const SizedBox()),
-              ),
-            );
-          }
-          if (type == 'nextpage') {
-            final target = el['targetPage'] ?? 0;
-            final targetPage = (target >= 0 && target < pages.length) ? pages[target] : null;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => _goToPage(target),
-                  icon: const Icon(Icons.arrow_forward),
-                  label: Text(targetPage != null ? 'برو به ${targetPage['name']}' : 'صفحه بعد'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(el['color'] ?? 0xFF6A11CB),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                ),
-              ),
-            );
-          }
-          return const SizedBox();
-        }),
+        ...elements.map((e) => _buildElement(e as Map<String, dynamic>)),
       ],
     );
   }
@@ -1991,6 +2248,172 @@ class _PreviewPageState extends State<PreviewPage> {
       drawer: _buildDrawer(),
       body: _buildPageContent(pages[_currentPageIndex] as Map<String, dynamic>, _currentPageIndex),
       bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+}
+
+class _VideoPlayerWidget extends StatefulWidget {
+  final String path;
+  const _VideoPlayerWidget({required this.path});
+  @override
+  State<_VideoPlayerWidget> createState() => _VideoPlayerWidgetState();
+}
+class _VideoPlayerWidgetState extends State<_VideoPlayerWidget> {
+  VideoPlayerController? _controller;
+  bool _initialized = false;
+  bool _error = false;
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+  Future<void> _init() async {
+    try {
+      _controller = VideoPlayerController.file(File(widget.path));
+      await _controller!.initialize();
+      if (mounted) setState(() => _initialized = true);
+    } catch (e) {
+      if (mounted) setState(() => _error = true);
+    }
+  }
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+  @override
+  Widget build(BuildContext context) {
+    if (_error) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Text('خطا در بارگذاری فیلم'),
+        ),
+      );
+    }
+    if (!_initialized) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(30),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: AspectRatio(
+        aspectRatio: _controller!.value.aspectRatio,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            VideoPlayer(_controller!),
+            IconButton(
+              icon: Icon(
+                _controller!.value.isPlaying ? Icons.pause_circle : Icons.play_circle,
+                color: Colors.white,
+                size: 60,
+              ),
+              onPressed: () {
+                setState(() {
+                  _controller!.value.isPlaying ? _controller!.pause() : _controller!.play();
+                });
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AudioPlayerWidget extends StatefulWidget {
+  final String path;
+  const _AudioPlayerWidget({required this.path});
+  @override
+  State<_AudioPlayerWidget> createState() => _AudioPlayerWidgetState();
+}
+class _AudioPlayerWidgetState extends State<_AudioPlayerWidget> {
+  final AudioPlayer _player = AudioPlayer();
+  bool _playing = false;
+  Duration _position = Duration.zero;
+  Duration _duration = Duration.zero;
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+  Future<void> _init() async {
+    try {
+      await _player.setSourceDeviceFile(widget.path);
+      _player.onDurationChanged.listen((d) {
+        if (mounted) setState(() => _duration = d);
+      });
+      _player.onPositionChanged.listen((p) {
+        if (mounted) setState(() => _position = p);
+      });
+      _player.onPlayerComplete.listen((_) {
+        if (mounted) setState(() { _playing = false; _position = Duration.zero; });
+      });
+    } catch (e) {}
+  }
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+  String _fmt(Duration d) {
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            IconButton(
+              icon: Icon(
+                _playing ? Icons.pause_circle : Icons.play_circle,
+                color: const Color(0xFF6A11CB),
+                size: 44,
+              ),
+              onPressed: () async {
+                if (_playing) {
+                  await _player.pause();
+                } else {
+                  await _player.resume();
+                }
+                setState(() => _playing = !_playing);
+              },
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Slider(
+                    value: _duration.inSeconds > 0 ? _position.inSeconds.toDouble().clamp(0, _duration.inSeconds.toDouble()) : 0,
+                    max: _duration.inSeconds > 0 ? _duration.inSeconds.toDouble() : 1,
+                    activeColor: const Color(0xFF6A11CB),
+                    onChanged: (v) async {
+                      await _player.seek(Duration(seconds: v.toInt()));
+                    },
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(_fmt(_position), style: const TextStyle(fontSize: 12)),
+                      Text(_fmt(_duration), style: const TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
