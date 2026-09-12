@@ -126,7 +126,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     ));
   }
 }
-
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
   @override
@@ -315,7 +314,6 @@ class HomePage extends StatelessWidget {
     );
   }
 }
-
 class MyAppsPage extends StatefulWidget {
   const MyAppsPage({super.key});
   @override
@@ -553,7 +551,6 @@ class _MyAppsPageState extends State<MyAppsPage> {
     );
   }
 }
-
 class CreateAppPage extends StatefulWidget {
   final VoidCallback onCreated;
   const CreateAppPage({super.key, required this.onCreated});
@@ -956,7 +953,6 @@ class _AppEditorPageState extends State<AppEditorPage> {
       child: ListTile(leading: Icon(icon, color: const Color(0xFF6A11CB), size: 32), title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)), subtitle: Text(sub), trailing: const Icon(Icons.arrow_forward_ios, size: 16), onTap: onTap));
   }
 }
-
 class WallpaperEditorPage extends StatefulWidget {
   final int appIndex;
   const WallpaperEditorPage({super.key, required this.appIndex});
