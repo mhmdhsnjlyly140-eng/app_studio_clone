@@ -12,6 +12,24 @@ import 'dart:io';
 
 const bazaarRsaKey = String.fromEnvironment('BAZAAR_RSA_KEY');
 
+const List<Map<String, dynamic>> availableIcons = [
+  {'name': 'خانه', 'icon': Icons.home},
+  {'name': 'کارها', 'icon': Icons.list},
+  {'name': 'تماس', 'icon': Icons.phone},
+  {'name': 'تنظیمات', 'icon': Icons.settings},
+  {'name': 'پروفایل', 'icon': Icons.person},
+  {'name': 'علاقه‌مندی', 'icon': Icons.favorite},
+  {'name': 'جستجو', 'icon': Icons.search},
+  {'name': 'فروشگاه', 'icon': Icons.shopping_cart},
+  {'name': 'گالری', 'icon': Icons.photo},
+  {'name': 'ویژه', 'icon': Icons.star},
+  {'name': 'فایل‌ها', 'icon': Icons.folder},
+  {'name': 'درباره', 'icon': Icons.info},
+  {'name': 'پیام', 'icon': Icons.message},
+  {'name': 'موزیک', 'icon': Icons.music_note},
+  {'name': 'مکان', 'icon': Icons.location_on},
+];
+
 class ProStatus extends ChangeNotifier {
   bool _isPro = false;
   bool get isPro => _isPro;
@@ -590,6 +608,8 @@ class _CreateAppPageState extends State<CreateAppPage> {
       'splashColor': 0xFF6A11CB,
       'splashDuration': 3,
       'splashTargetPage': 0,
+      'bottomMenu': [],
+      'drawerMenu': [],
       'adiveryKey': '',
       'tapsellKey': '',
     }));
@@ -761,6 +781,8 @@ class _AppEditorPageState extends State<AppEditorPage> {
       _card(Icons.preview, 'پیش نمایش', 'مشاهده پیش نمایش اپ', () => Navigator.push(context, MaterialPageRoute(builder: (_) => PreviewPage(app: _app!)))),
       _card(Icons.android, 'خروجی APK', 'به زودی', () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('به زودی! در نظرات درخواست کنید')))),
       _card(Icons.wallpaper, 'Splash Screen', 'عکس + متن + مدت زمان', _splashDialog),
+      _card(Icons.navigation, 'منوی پایین', 'ناوبری پایین اپ (حداکثر ۴)', _bottomMenuDialog),
+      _card(Icons.menu, 'منوی کشویی', 'منوی کناری اپ', _drawerMenuDialog),
       _card(Icons.palette, 'حالت پیشرفته تم', 'رنگ و فونت اپ', _themeDialog),
     ]);
   }
@@ -956,6 +978,313 @@ class _AppEditorPageState extends State<AppEditorPage> {
                 _app!['splashTargetPage'] = targetPage;
                 await _save();
                 if (mounted) Navigator.pop(c);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6A11CB)),
+              child: const Text('ذخیره'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  void _bottomMenuDialog() {
+    List<dynamic> items = List.from(_app!['bottomMenu'] ?? []);
+    final pages = (_app!['pages'] as List? ?? []);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (c) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(children: [
+            Icon(Icons.navigation, color: Color(0xFF6A11CB)),
+            SizedBox(width: 10),
+            Text('منوی پایین'),
+          ]),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('حداکثر ۴ آیتم (${items.length}/۴)', style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                const SizedBox(height: 12),
+                if (pages.isEmpty)
+                  const Text('اول باید حداقل یه صفحه بسازی!', style: TextStyle(color: Colors.red)),
+                for (int i = 0; i < items.length; i++) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Expanded(
+                            child: Text(items[i]['label'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.edit, size: 18, color: Color(0xFF6A11CB)),
+                            onPressed: () async {
+                              final result = await _editMenuItem(items[i], pages);
+                              if (result != null) {
+                                setStateDialog(() => items[i] = result);
+                              }
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, size: 18, color: Colors.red),
+                            onPressed: () => setStateDialog(() => items.removeAt(i)),
+                          ),
+                        ]),
+                        Text('مقصد: ${items[i]['pageIndex'] != null && items[i]['pageIndex'] < pages.length ? pages[items[i]['pageIndex']]['name'] : 'نامشخص'}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                ],
+                if (items.length < 4 && pages.isNotEmpty)
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final result = await _editMenuItem({
+                        'label': '',
+                        'iconType': 'builtin',
+                        'iconIndex': 0,
+                        'iconPath': '',
+                        'pageIndex': 0,
+                      }, pages);
+                      if (result != null) {
+                        setStateDialog(() => items.add(result));
+                      }
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('افزودن آیتم'),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(c),
+              child: const Text('لغو', style: TextStyle(color: Colors.red)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                _app!['bottomMenu'] = items;
+                await _save();
+                if (mounted) Navigator.pop(c);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6A11CB)),
+              child: const Text('ذخیره'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  void _drawerMenuDialog() {
+    List<dynamic> items = List.from(_app!['drawerMenu'] ?? []);
+    final pages = (_app!['pages'] as List? ?? []);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (c) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(children: [
+            Icon(Icons.menu, color: Color(0xFF6A11CB)),
+            SizedBox(width: 10),
+            Text('منوی کشویی'),
+          ]),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${items.length} آیتم', style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                const SizedBox(height: 12),
+                if (pages.isEmpty)
+                  const Text('اول باید حداقل یه صفحه بسازی!', style: TextStyle(color: Colors.red)),
+                for (int i = 0; i < items.length; i++) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Expanded(
+                            child: Text(items[i]['label'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.edit, size: 18, color: Color(0xFF6A11CB)),
+                            onPressed: () async {
+                              final result = await _editMenuItem(items[i], pages);
+                              if (result != null) {
+                                setStateDialog(() => items[i] = result);
+                              }
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, size: 18, color: Colors.red),
+                            onPressed: () => setStateDialog(() => items.removeAt(i)),
+                          ),
+                        ]),
+                        Text('مقصد: ${items[i]['pageIndex'] != null && items[i]['pageIndex'] < pages.length ? pages[items[i]['pageIndex']]['name'] : 'نامشخص'}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                ],
+                if (pages.isNotEmpty)
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final result = await _editMenuItem({
+                        'label': '',
+                        'iconType': 'builtin',
+                        'iconIndex': 0,
+                        'iconPath': '',
+                        'pageIndex': 0,
+                      }, pages);
+                      if (result != null) {
+                        setStateDialog(() => items.add(result));
+                      }
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('افزودن آیتم'),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(c),
+              child: const Text('لغو', style: TextStyle(color: Colors.red)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                _app!['drawerMenu'] = items;
+                await _save();
+                if (mounted) Navigator.pop(c);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6A11CB)),
+              child: const Text('ذخیره'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  Future<Map<String, dynamic>?> _editMenuItem(Map<String, dynamic> item, List pages) async {
+    final labelCtrl = TextEditingController(text: item['label'] ?? '');
+    String iconType = item['iconType'] ?? 'builtin';
+    int iconIndex = item['iconIndex'] ?? 0;
+    String iconPath = item['iconPath'] ?? '';
+    int pageIndex = item['pageIndex'] ?? 0;
+    return showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (c) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('ویرایش آیتم'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('نام آیتم:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: labelCtrl,
+                  decoration: const InputDecoration(hintText: 'مثلا: خانه', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 16),
+                const Text('آیکون:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                Row(children: [
+                  ChoiceChip(
+                    label: const Text('آماده'),
+                    selected: iconType == 'builtin',
+                    onSelected: (v) => setStateDialog(() => iconType = 'builtin'),
+                  ),
+                  const SizedBox(width: 8),
+                  ChoiceChip(
+                    label: const Text('گالری'),
+                    selected: iconType == 'gallery',
+                    onSelected: (v) => setStateDialog(() => iconType = 'gallery'),
+                  ),
+                ]),
+                const SizedBox(height: 8),
+                if (iconType == 'builtin')
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (int i = 0; i < availableIcons.length; i++)
+                        GestureDetector(
+                          onTap: () => setStateDialog(() => iconIndex = i),
+                          child: Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: iconIndex == i ? const Color(0xFF6A11CB).withOpacity(0.2) : Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: iconIndex == i ? const Color(0xFF6A11CB) : Colors.transparent, width: 2),
+                            ),
+                            child: Icon(availableIcons[i]['icon'], color: const Color(0xFF6A11CB), size: 22),
+                          ),
+                        ),
+                    ],
+                  )
+                else ...[
+                  if (iconPath.isNotEmpty)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(File(iconPath), width: 60, height: 60, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image)),
+                    ),
+                  const SizedBox(height: 6),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final picker = ImagePicker();
+                      final img = await picker.pickImage(source: ImageSource.gallery);
+                      if (img != null) {
+                        setStateDialog(() => iconPath = img.path);
+                      }
+                    },
+                    icon: const Icon(Icons.image),
+                    label: const Text('انتخاب از گالری'),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                const Text('مقصد:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                DropdownButton<int>(
+                  value: pageIndex < pages.length ? pageIndex : 0,
+                  isExpanded: true,
+                  items: [
+                    for (int i = 0; i < pages.length; i++)
+                      DropdownMenuItem(value: i, child: Text(pages[i]['name'] ?? 'صفحه ${i + 1}')),
+                  ],
+                  onChanged: (v) => setStateDialog(() => pageIndex = v ?? 0),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(c), child: const Text('لغو')),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(c, {
+                  'label': labelCtrl.text,
+                  'iconType': iconType,
+                  'iconIndex': iconIndex,
+                  'iconPath': iconPath,
+                  'pageIndex': pageIndex,
+                });
               },
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6A11CB)),
               child: const Text('ذخیره'),
@@ -1360,7 +1689,6 @@ class _PageEditorPageState extends State<PageEditorPage> {
     }
   }
 }
-
 class PreviewPage extends StatefulWidget {
   final Map<String, dynamic> app;
   const PreviewPage({super.key, required this.app});
@@ -1538,6 +1866,82 @@ class _PreviewPageState extends State<PreviewPage> {
       ],
     );
   }
+  Widget? _buildBottomNav() {
+    final items = (_app['bottomMenu'] as List? ?? []);
+    final pages = (_app['pages'] as List? ?? []);
+    if (items.length < 2 || pages.isEmpty) return null;
+    final validIndex = _currentPageIndex < items.length ? _currentPageIndex : 0;
+    return NavigationBar(
+      selectedIndex: validIndex.clamp(0, items.length - 1),
+      onDestinationSelected: (i) {
+        final item = items[i];
+        final pageIndex = item['pageIndex'] ?? 0;
+        _goToPage(pageIndex);
+      },
+      backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E1E1E) : Colors.white,
+      indicatorColor: Color(_app['themeColor'] ?? 0xFF6A11CB).withOpacity(0.15),
+      destinations: items.map<Widget>((item) {
+        Widget iconWidget;
+        if (item['iconType'] == 'gallery' && (item['iconPath'] ?? '').isNotEmpty) {
+          iconWidget = ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: Image.file(File(item['iconPath']), width: 24, height: 24, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.circle)),
+          );
+        } else {
+          final idx = (item['iconIndex'] ?? 0) as int;
+          final icon = (idx >= 0 && idx < availableIcons.length) ? availableIcons[idx]['icon'] as IconData : Icons.circle;
+          iconWidget = Icon(icon);
+        }
+        return NavigationDestination(
+          icon: iconWidget,
+          selectedIcon: iconWidget,
+          label: item['label'] ?? '',
+        );
+      }).toList(),
+    );
+  }
+  Widget? _buildDrawer() {
+    final items = (_app['drawerMenu'] as List? ?? []);
+    final pages = (_app['pages'] as List? ?? []);
+    if (items.isEmpty || pages.isEmpty) return null;
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(color: Color(_app['themeColor'] ?? 0xFF6A11CB)),
+            child: Center(
+              child: Text(
+                _app['name'] ?? '',
+                style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+          ...items.map<Widget>((item) {
+            Widget leadingWidget;
+            if (item['iconType'] == 'gallery' && (item['iconPath'] ?? '').isNotEmpty) {
+              leadingWidget = ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: Image.file(File(item['iconPath']), width: 28, height: 28, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.circle)),
+              );
+            } else {
+              final idx = (item['iconIndex'] ?? 0) as int;
+              final icon = (idx >= 0 && idx < availableIcons.length) ? availableIcons[idx]['icon'] as IconData : Icons.circle;
+              leadingWidget = Icon(icon, color: Color(_app['themeColor'] ?? 0xFF6A11CB));
+            }
+            return ListTile(
+              leading: leadingWidget,
+              title: Text(item['label'] ?? ''),
+              onTap: () {
+                Navigator.pop(context);
+                _goToPage(item['pageIndex'] ?? 0);
+              },
+            );
+          }),
+        ],
+      ),
+    );
+  }
   @override
   Widget build(BuildContext context) {
     if (_app['appType'] == 'wallpaper') {
@@ -1584,7 +1988,9 @@ class _PreviewPageState extends State<PreviewPage> {
         backgroundColor: Color(_app['themeColor'] ?? 0xFF6A11CB),
         foregroundColor: Colors.white,
       ),
+      drawer: _buildDrawer(),
       body: _buildPageContent(pages[_currentPageIndex] as Map<String, dynamic>, _currentPageIndex),
+      bottomNavigationBar: _buildBottomNav(),
     );
   }
 }
