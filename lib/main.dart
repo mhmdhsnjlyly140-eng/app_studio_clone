@@ -73,7 +73,6 @@ String getActionName(String? id) {
   return 'نامشخص';
 }
 
-// ═══════════ ویجت‌های مشترک UI ═══════════
 class GradientButton extends StatelessWidget {
   final String text;
   final IconData icon;
@@ -94,9 +93,7 @@ class GradientButton extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
             decoration: BoxDecoration(
-              gradient: primary
-                ? LinearGradient(colors: [c, Color.lerp(c, Colors.blue, 0.3)!])
-                : null,
+              gradient: primary ? LinearGradient(colors: [c, Color.lerp(c, Colors.blue, 0.3)!]) : null,
               color: primary ? null : Colors.white.withOpacity(0.15),
               borderRadius: BorderRadius.circular(18),
               border: primary ? null : Border.all(color: Colors.white.withOpacity(0.4), width: 1.5),
@@ -172,7 +169,6 @@ class FeatureCard extends StatelessWidget {
   }
 }
 
-// ═══════════ Status Notifiers ═══════════
 class ProStatus extends ChangeNotifier {
   bool _isPro = false;
   bool get isPro => _isPro;
@@ -225,13 +221,11 @@ class AppLand extends StatelessWidget {
           brightness: Brightness.light,
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6A11CB), brightness: Brightness.light),
           useMaterial3: true,
-          fontFamily: 'Roboto',
         ),
         darkTheme: ThemeData(
           brightness: Brightness.dark,
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6A11CB), brightness: Brightness.dark),
           useMaterial3: true,
-          fontFamily: 'Roboto',
         ),
         home: const SplashScreen(),
       ),
@@ -550,10 +544,7 @@ class _MyAppsPageState extends State<MyAppsPage> {
       title: Row(children: [
         Container(
           width: 42, height: 42,
-          decoration: BoxDecoration(
-            color: Color(app['color'] ?? 0xFF6A11CB),
-            borderRadius: BorderRadius.circular(12),
-          ),
+          decoration: BoxDecoration(color: Color(app['color'] ?? 0xFF6A11CB), borderRadius: BorderRadius.circular(12)),
           child: const Icon(Icons.apps, color: Colors.white),
         ),
         const SizedBox(width: 12),
@@ -668,10 +659,7 @@ class _MyAppsPageState extends State<MyAppsPage> {
         : _apps.isEmpty ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
             Container(
               padding: const EdgeInsets.all(30),
-              decoration: BoxDecoration(
-                color: const Color(0xFF6A11CB).withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: const Color(0xFF6A11CB).withOpacity(0.1), shape: BoxShape.circle),
               child: Icon(Icons.apps, size: 80, color: isDark ? Colors.grey[600] : Colors.grey[400]),
             ),
             const SizedBox(height: 24),
@@ -757,10 +745,7 @@ class _MyAppsPageState extends State<MyAppsPage> {
                                           Row(children: [
                                             Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                              decoration: BoxDecoration(
-                                                color: appColor.withOpacity(0.1),
-                                                borderRadius: BorderRadius.circular(8),
-                                              ),
+                                              decoration: BoxDecoration(color: appColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
                                               child: Text(
                                                 app['appType'] == 'content' ? 'محتوا محور' : 'والپیپر',
                                                 style: TextStyle(fontSize: 11, color: appColor, fontWeight: FontWeight.bold),
@@ -769,14 +754,8 @@ class _MyAppsPageState extends State<MyAppsPage> {
                                             const SizedBox(width: 6),
                                             Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                              decoration: BoxDecoration(
-                                                color: Colors.grey.withOpacity(0.1),
-                                                borderRadius: BorderRadius.circular(8),
-                                              ),
-                                              child: Text(
-                                                '${(app['pages'] as List? ?? []).length} صفحه',
-                                                style: const TextStyle(fontSize: 11, color: Colors.grey),
-                                              ),
+                                              decoration: BoxDecoration(color: Colors.grey.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                                              child: Text('${(app['pages'] as List? ?? []).length} صفحه', style: const TextStyle(fontSize: 11, color: Colors.grey)),
                                             ),
                                           ]),
                                         ],
@@ -991,10 +970,7 @@ class _CreateAppPageState extends State<CreateAppPage> {
           Row(children: [
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF6A11CB).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
+              decoration: BoxDecoration(color: const Color(0xFF6A11CB).withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
               child: Icon(icon, color: const Color(0xFF6A11CB), size: 20),
             ),
             const SizedBox(width: 10),
@@ -1745,9 +1721,7 @@ class _AppEditorPageState extends State<AppEditorPage> {
                   decoration: BoxDecoration(
                     color: Color(_app!['color'] ?? 0xFF6A11CB),
                     borderRadius: BorderRadius.circular(20),
-                    image: iconPath.isNotEmpty
-                      ? DecorationImage(image: FileImage(File(iconPath)), fit: BoxFit.cover, onError: (_, __) {})
-                      : null,
+                    image: iconPath.isNotEmpty ? DecorationImage(image: FileImage(File(iconPath)), fit: BoxFit.cover, onError: (_, __) {}) : null,
                   ),
                   child: iconPath.isEmpty ? const Icon(Icons.apps, color: Colors.white, size: 40) : null,
                 ),
@@ -1937,18 +1911,6 @@ class _AppEditorPageState extends State<AppEditorPage> {
         onDisconnected: () {},
       );
     } catch (e) {}
-  }
-  void _changeName() {
-    final ctrl = TextEditingController(text: _app!['name'] ?? '');
-    showDialog(context: context, builder: (c) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      title: const Text('تغییر نام'),
-      content: TextField(controller: ctrl, decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)))),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(c), child: const Text('لغو')),
-        ElevatedButton(onPressed: () async { _app!['name'] = ctrl.text; await _save(); if (mounted) Navigator.pop(c); }, style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6A11CB), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text('ذخیره')),
-      ],
-    ));
   }
 }
 class WallpaperEditorPage extends StatefulWidget {
@@ -2170,7 +2132,7 @@ class _PagesListPageState extends State<PagesListPage> {
                                 content: Text('صفحه «${_pages[i]['name']}» حذف شود؟'),
                                 actions: [
                                   TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('لغو')),
-                                  ElevatedButton(onPressed: () => Navigator.pop(c, true), style: ElevatedButton.styleFrom(backgroundColor: Colors.red), child: const Text('حذف')),
+                                  ElevatedButton(onPressed: () => Navigator.pop(c, true), style: ElevatedButton.styleFrom(backgroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text('حذف')),
                                 ],
                               ));
                               if (confirm == true) {
@@ -2584,8 +2546,6 @@ class _PageEditorPageState extends State<PageEditorPage> {
       case 'audio': return Icons.music_note;
       case 'slider': return Icons.view_carousel;
       case 'banner': return Icons.campaign;
-      case 'bottomnav': return Icons.navigation;
-      case 'drawer': return Icons.menu;
       case 'nextpage': return Icons.arrow_forward;
       case 'purchase': return Icons.payment;
       default: return Icons.widgets;
@@ -2601,8 +2561,6 @@ class _PageEditorPageState extends State<PageEditorPage> {
       case 'audio': return 'موزیک';
       case 'slider': return 'اسلایدر';
       case 'banner': return 'بنر تبلیغ';
-      case 'bottomnav': return 'منوی پایین';
-      case 'drawer': return 'منوی کشویی';
       case 'nextpage': return 'صفحه بعد';
       case 'purchase': return 'پرداخت';
       default: return 'نامشخص';
@@ -2938,38 +2896,20 @@ class _PreviewPageState extends State<PreviewPage> {
     if (type == 'slider') {
       final images = List<String>.from(el['images'] ?? []);
       if (images.isEmpty) return const SizedBox();
-      final PageController controller = PageController();
       return Padding(
         padding: const EdgeInsets.only(bottom: 16),
-        child: Column(
-          children: [
-            SizedBox(
-              height: 220,
-              child: PageView.builder(
-                controller: controller,
-                itemCount: images.length,
-                itemBuilder: (c, i) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(18),
-                    child: Image.file(File(images[i]), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: Colors.grey.shade300, child: const Icon(Icons.broken_image))),
-                  ),
-                ),
+        child: SizedBox(
+          height: 220,
+          child: PageView.builder(
+            itemCount: images.length,
+            itemBuilder: (c, i) => Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: Image.file(File(images[i]), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: Colors.grey.shade300, child: const Icon(Icons.broken_image))),
               ),
             ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(images.length, (i) => Container(
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                width: 8, height: 8,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6A11CB).withOpacity(0.5),
-                  shape: BoxShape.circle,
-                ),
-              )),
-            ),
-          ],
+          ),
         ),
       );
     }
@@ -2982,7 +2922,7 @@ class _PreviewPageState extends State<PreviewPage> {
           decoration: BoxDecoration(
             gradient: LinearGradient(colors: [Colors.grey.withOpacity(0.15), Colors.grey.withOpacity(0.05)]),
             borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: Colors.grey.withOpacity(0.3), style: BorderStyle.solid, width: 1.5),
+            border: Border.all(color: Colors.grey.withOpacity(0.3), width: 1.5),
           ),
           child: Center(
             child: Column(
@@ -3224,7 +3164,7 @@ class _VideoPlayerWidgetState extends State<_VideoPlayerWidget> {
             VideoPlayer(_controller!),
             Container(color: Colors.black.withOpacity(0.1)),
             IconButton(
-              icon: Icon(_controller!.value.isPlaying ? Icons.pause_circle : Icons.play_circle, color: Colors.white, size: 70, shadows: [Shadow(color: Colors.black, blurRadius: 10)] as List<Shadow>),
+              icon: Icon(_controller!.value.isPlaying ? Icons.pause_circle : Icons.play_circle, color: Colors.white, size: 70),
               onPressed: () {
                 setState(() {
                   _controller!.value.isPlaying ? _controller!.pause() : _controller!.play();
@@ -3490,9 +3430,9 @@ class SettingsPage extends StatelessWidget {
           ]),
         ),
         const SizedBox(height: 12),
-        _buildActionTile(icon: Icons.backup, color: Colors.green, title: 'پشتیبان‌گیری از اپ‌ها', subtitle: 'ذخیره همه اپ‌ها توی یه فایل', onTap: () => _backupApps(context)),
+        _buildActionTile(context, icon: Icons.backup, color: Colors.green, title: 'پشتیبان‌گیری از اپ‌ها', subtitle: 'ذخیره همه اپ‌ها توی یه فایل', onTap: () => _backupApps(context)),
         const SizedBox(height: 12),
-        _buildActionTile(icon: Icons.restore, color: Colors.orange, title: 'بازیابی از پشتیبان', subtitle: 'برگرداندن اپ‌ها از فایل پشتیبان', onTap: () => _restoreApps(context)),
+        _buildActionTile(context, icon: Icons.restore, color: Colors.orange, title: 'بازیابی از پشتیبان', subtitle: 'برگرداندن اپ‌ها از فایل پشتیبان', onTap: () => _restoreApps(context)),
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(16),
@@ -3524,16 +3464,23 @@ class SettingsPage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        _buildActionTile(icon: Icons.info, color: const Color(0xFF6A11CB), title: 'درباره اپ لند', subtitle: 'اطلاعات و امکانات اپ', onTap: () => showAboutDialog(
-          context: context,
-          applicationName: 'اپ لند',
-          applicationVersion: '1.0.0',
-          children: const [
-            Text('با اپ لند بدون کدنویسی، اپ اندروید بسازید!'),
-            SizedBox(height: 8),
-            Text('امکانات: ساخت اپ (محتوا محور/والپیپر)، صفحه ساز، تبلیغات، پرداخت درون برنامه ای، تم پیشرفته، فونت دلخواه و...'),
-          ],
-        )),
+        _buildActionTile(
+          context,
+          icon: Icons.info,
+          color: const Color(0xFF6A11CB),
+          title: 'درباره اپ لند',
+          subtitle: 'اطلاعات و امکانات اپ',
+          onTap: () => showAboutDialog(
+            context: context,
+            applicationName: 'اپ لند',
+            applicationVersion: '1.0.0',
+            children: const [
+              Text('با اپ لند بدون کدنویسی، اپ اندروید بسازید!'),
+              SizedBox(height: 8),
+              Text('امکانات: ساخت اپ (محتوا محور/والپیپر)، صفحه ساز، تبلیغات، پرداخت درون برنامه ای، تم پیشرفته، فونت دلخواه و...'),
+            ],
+          ),
+        ),
         const SizedBox(height: 30),
         Center(
           child: Column(children: [
@@ -3552,7 +3499,8 @@ class SettingsPage extends StatelessWidget {
       ])),
     );
   }
-  Widget _buildActionTile({required IconData icon, required Color color, required String title, required String subtitle, required VoidCallback onTap}) {
+
+  Widget _buildActionTile(BuildContext context, {required IconData icon, required Color color, required String title, required String subtitle, required VoidCallback onTap}) {
     return Container(
       decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 15, offset: const Offset(0, 4))]),
       child: Material(
