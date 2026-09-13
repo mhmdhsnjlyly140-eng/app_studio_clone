@@ -85,7 +85,7 @@ jobs:
 
       - name: Decode Keystore
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/appland-release.jks
+          cp appland.jks android/app/appland-release.jks
 
       - name: Set up Signing Config
         run: |
