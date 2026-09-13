@@ -544,8 +544,14 @@ class _MyAppsPageState extends State<MyAppsPage> {
       title: Row(children: [
         Container(
           width: 42, height: 42,
-          decoration: BoxDecoration(color: Color(app['color'] ?? 0xFF6A11CB), borderRadius: BorderRadius.circular(12)),
-          child: const Icon(Icons.apps, color: Colors.white),
+          decoration: BoxDecoration(
+            color: Color(app['color'] ?? 0xFF6A11CB),
+            borderRadius: BorderRadius.circular(12),
+            image: (app['iconPath'] ?? '').isNotEmpty
+              ? DecorationImage(image: FileImage(File(app['iconPath'])), fit: BoxFit.cover, onError: (_, __) {})
+              : null,
+          ),
+          child: (app['iconPath'] ?? '').isEmpty ? const Icon(Icons.apps, color: Colors.white) : null,
         ),
         const SizedBox(width: 12),
         Expanded(child: Text(app['name'] ?? '', style: const TextStyle(fontSize: 18))),
@@ -699,6 +705,7 @@ class _MyAppsPageState extends State<MyAppsPage> {
                       final app = _filtered[i];
                       final isPro = app['isPro'] == true || proStatus.isPro;
                       final appColor = Color(app['color'] ?? 0xFF6A11CB);
+                      final hasIcon = (app['iconPath'] ?? '').isNotEmpty;
                       return TweenAnimationBuilder<double>(
                         tween: Tween(begin: 0, end: 1),
                         duration: Duration(milliseconds: 300 + i * 50),
@@ -726,11 +733,13 @@ class _MyAppsPageState extends State<MyAppsPage> {
                                     Container(
                                       width: 65, height: 65,
                                       decoration: BoxDecoration(
-                                        gradient: LinearGradient(colors: [appColor, Color.lerp(appColor, Colors.white, 0.3)!]),
+                                        gradient: hasIcon ? null : LinearGradient(colors: [appColor, Color.lerp(appColor, Colors.white, 0.3)!]),
+                                        color: hasIcon ? null : appColor,
                                         borderRadius: BorderRadius.circular(18),
                                         boxShadow: [BoxShadow(color: appColor.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))],
+                                        image: hasIcon ? DecorationImage(image: FileImage(File(app['iconPath'])), fit: BoxFit.cover, onError: (_, __) {}) : null,
                                       ),
-                                      child: Icon(isPro ? Icons.verified : Icons.apps, color: Colors.white, size: 34),
+                                      child: hasIcon ? null : Icon(isPro ? Icons.verified : Icons.apps, color: Colors.white, size: 34),
                                     ),
                                     const SizedBox(width: 14),
                                     Expanded(
@@ -806,7 +815,7 @@ class CreateAppPage extends StatefulWidget {
 class _CreateAppPageState extends State<CreateAppPage> {
   final _name = TextEditingController();
   final _welcome = TextEditingController();
-  final _pkg = TextEditingController();
+  final _pkg = TextEditingController(text: 'ir.appland.myapp_${DateTime.now().millisecondsSinceEpoch}');
   Color _color = const Color(0xFF6A11CB);
   String _type = 'content';
   final _colors = [
@@ -823,7 +832,6 @@ class _CreateAppPageState extends State<CreateAppPage> {
   void dispose() { _name.dispose(); _welcome.dispose(); _pkg.dispose(); super.dispose(); }
   Future<void> _save() async {
     if (_name.text.isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('نام اپ را وارد کنید'))); return; }
-    if (_pkg.text.isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('نام پکیج را وارد کنید'))); return; }
     final p = await SharedPreferences.getInstance();
     final a = p.getStringList('my_apps') ?? [];
     a.add(jsonEncode({
@@ -865,7 +873,7 @@ class _CreateAppPageState extends State<CreateAppPage> {
     await p.setStringList('my_apps', a);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('اپ ${_name.text} ساخته شد'), backgroundColor: Colors.green));
-      _name.clear(); _welcome.clear(); _pkg.clear();
+      _name.clear(); _welcome.clear();
       widget.onCreated();
     }
   }
@@ -890,7 +898,7 @@ class _CreateAppPageState extends State<CreateAppPage> {
               const SizedBox(height: 16),
               _buildField('پیام خوش آمدگویی', _welcome, 'به فروشگاه من خوش آمدید', Icons.message),
               const SizedBox(height: 16),
-              _buildField('نام پکیج', _pkg, 'ir.appland.myapp', Icons.code),
+              _buildField('نام پکیج', _pkg, '', Icons.code, enabled: false),
             ]),
           ),
           const SizedBox(height: 16),
@@ -1012,17 +1020,20 @@ class _CreateAppPageState extends State<CreateAppPage> {
       ),
     );
   }
-  Widget _buildField(String label, TextEditingController ctrl, String hint, IconData icon) {
+  Widget _buildField(String label, TextEditingController ctrl, String hint, IconData icon, {bool enabled = true}) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
       const SizedBox(height: 8),
       TextField(
         controller: ctrl,
+        enabled: enabled,
         decoration: InputDecoration(
           hintText: hint,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-          prefixIcon: Icon(icon, color: const Color(0xFF6A11CB)),
+          prefixIcon: Icon(icon, color: enabled ? const Color(0xFF6A11CB) : Colors.grey),
+          suffixIcon: enabled ? null : const Icon(Icons.lock, color: Colors.grey, size: 18),
           filled: true,
+          fillColor: enabled ? null : Colors.grey.withOpacity(0.1),
         ),
       ),
     ]);
@@ -1102,8 +1113,20 @@ class _AppEditorPageState extends State<AppEditorPage> {
         FeatureCard(icon: Icons.wallpaper, title: 'گالری والپیپر', subtitle: 'افزودن عکس های پس زمینه', onTap: () => _editWallpapers(), color: Colors.pink)
       else
         FeatureCard(icon: Icons.pages, title: 'صفحات اپ', subtitle: '${pages.length} صفحه ساخته شده', onTap: () => _editPages(pages), color: const Color(0xFF6A11CB)),
-      FeatureCard(icon: Icons.preview, title: 'پیش نمایش', subtitle: 'مشاهده پیش نمایش کامل اپ', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PreviewPage(app: _app!))), color: Colors.green),
-      FeatureCard(icon: Icons.android, title: 'خروجی APK', subtitle: 'به زودی در نسخه‌های بعدی', onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('به زودی! در نظرات درخواست کنید'))), color: Colors.grey),
+      FeatureCard(
+        icon: Icons.preview,
+        title: 'پیش نمایش',
+        subtitle: 'مشاهده پیش نمایش کامل اپ',
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PreviewPage(app: _app!))),
+        color: Colors.green,
+      ),
+      FeatureCard(
+        icon: Icons.android,
+        title: 'خروجی APK',
+        subtitle: _hasAccess ? 'ساخت فایل نصب نهایی' : 'برای فعال‌سازی، این اپ رو پرو کنید',
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PreviewPage(app: _app!))),
+        color: _hasAccess ? Colors.green : Colors.grey,
+      ),
       FeatureCard(icon: Icons.wallpaper, title: 'Splash Screen', subtitle: 'عکس + متن + رنگ + مدت زمان', onTap: _splashDialog, color: Colors.orange),
       FeatureCard(icon: Icons.navigation, title: 'منوی پایین', subtitle: 'ناوبری پایین اپ (حداکثر ۴)', onTap: _bottomMenuDialog, color: Colors.blue),
       FeatureCard(icon: Icons.menu, title: 'منوی کشویی', subtitle: 'منوی کناری اپ', onTap: _drawerMenuDialog, color: Colors.teal),
@@ -1719,7 +1742,7 @@ class _AppEditorPageState extends State<AppEditorPage> {
                 Container(
                   width: 80, height: 80,
                   decoration: BoxDecoration(
-                    color: Color(_app!['color'] ?? 0xFF6A11CB),
+                    color: iconPath.isEmpty ? Color(_app!['color'] ?? 0xFF6A11CB) : null,
                     borderRadius: BorderRadius.circular(20),
                     image: iconPath.isNotEmpty ? DecorationImage(image: FileImage(File(iconPath)), fit: BoxFit.cover, onError: (_, __) {}) : null,
                   ),
@@ -1764,7 +1787,18 @@ class _AppEditorPageState extends State<AppEditorPage> {
               const SizedBox(height: 14),
               TextField(controller: nameCtrl, onChanged: (v) => _app!['name'] = v, decoration: InputDecoration(labelText: 'نام اپ', border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)), prefixIcon: const Icon(Icons.text_fields))),
               const SizedBox(height: 12),
-              TextField(controller: pkgCtrl, onChanged: (v) => _app!['packageName'] = v, decoration: InputDecoration(labelText: 'نام پکیج', border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)), prefixIcon: const Icon(Icons.code))),
+              TextField(
+                controller: pkgCtrl,
+                enabled: false,
+                decoration: InputDecoration(
+                  labelText: 'نام پکیج',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                  prefixIcon: const Icon(Icons.code, color: Colors.grey),
+                  suffixIcon: const Icon(Icons.lock, color: Colors.grey, size: 18),
+                  filled: true,
+                  fillColor: Colors.grey.withOpacity(0.1),
+                ),
+              ),
               const SizedBox(height: 12),
               TextField(controller: descCtrl, onChanged: (v) => _app!['shortDescription'] = v, maxLines: 3, decoration: InputDecoration(labelText: 'توضیحات کوتاه', hintText: 'مثلاً: بهترین فروشگاه آنلاین', border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)), prefixIcon: const Icon(Icons.description))),
             ],
@@ -2664,6 +2698,10 @@ class _PreviewPageState extends State<PreviewPage> {
     );
   }
   Future<void> _handleAction(String action, String value, int targetPage) async {
+    if (action == 'apk') {
+      await _buildApk();
+      return;
+    }
     switch (action) {
       case 'none':
         break;
@@ -2715,6 +2753,145 @@ class _PreviewPageState extends State<PreviewPage> {
         }
         break;
     }
+  }
+  Future<void> _buildApk() async {
+    final isAppPro = _app['isPro'] == true;
+    final hasAccess = proStatus.isPro || isAppPro;
+    if (!hasAccess) {
+      showDialog(
+        context: context,
+        builder: (c) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Row(children: [
+            Icon(Icons.workspace_premium, color: Colors.amber, size: 30),
+            SizedBox(width: 10),
+            Text('فعال‌سازی APK'),
+          ]),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('برای ساخت فایل نصب این اپ، باید این اپ رو پرو کنید.', style: TextStyle(fontSize: 14)),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6A11CB).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('💎 پرو این اپ:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    SizedBox(height: 6),
+                    Text('• ساخت APK برای این اپ', style: TextStyle(fontSize: 13)),
+                    Text('• فعال‌سازی تبلیغات', style: TextStyle(fontSize: 13)),
+                    Text('• فعال‌سازی پرداخت درون‌برنامه‌ای', style: TextStyle(fontSize: 13)),
+                    SizedBox(height: 10),
+                    Text('۱۹۹,۰۰۰ تومان', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Color(0xFF6A11CB))),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('👑 نسخه دائمی:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    SizedBox(height: 6),
+                    Text('• همه اپ‌ها رایگان', style: TextStyle(fontSize: 13)),
+                    Text('• APK برای همه اپ‌ها', style: TextStyle(fontSize: 13)),
+                    SizedBox(height: 10),
+                    Text('۹۹۹,۰۰۰ تومان', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.orange)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(c), child: const Text('لغو')),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(c);
+                await _buyThisApp();
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6A11CB), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+              child: const Text('خرید پرو (۱۹۹,۰۰۰)'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (c) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Row(children: [
+          Icon(Icons.android, color: Colors.green, size: 30),
+          SizedBox(width: 10),
+          Text('در حال ساخت APK...'),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 10),
+            const SizedBox(width: 60, height: 60, child: CircularProgressIndicator(color: Color(0xFF6A11CB), strokeWidth: 4)),
+            const SizedBox(height: 24),
+            const Text('لطفاً صبر کنید...', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text('فایل نصب اپ شما در حال ساخته شدنه', style: TextStyle(fontSize: 13, color: Colors.grey)),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Row(children: [
+                Icon(Icons.info, color: Colors.blue, size: 18),
+                SizedBox(width: 8),
+                Expanded(child: Text('این سرویس در حال آماده‌سازیه و به‌زودی فعال می‌شه', style: TextStyle(fontSize: 12))),
+              ]),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c),
+            child: const Text('لغو ساخت', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+  Future<void> _buyThisApp() async {
+    if (bazaarRsaKey.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('کلید RSA تنظیم نشده!'), backgroundColor: Colors.red));
+      return;
+    }
+    try {
+      await FlutterPoolakey.connect(
+        bazaarRsaKey,
+        onSucceed: () async {
+          try {
+            final response = await FlutterPoolakey.purchase('appland_pro', payload: 'app_pro');
+            if (response != null) {
+              setState(() => _app['isPro'] = true);
+              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('اپ پرو شد!'), backgroundColor: Colors.green));
+            }
+          } catch (e) {}
+        },
+        onFailed: () {},
+        onDisconnected: () {},
+      );
+    } catch (e) {}
   }
   Widget _buildElement(Map<String, dynamic> el) {
     final type = el['type'];
@@ -3023,11 +3200,16 @@ class _PreviewPageState extends State<PreviewPage> {
                   Container(
                     width: 70, height: 70,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: (_app['iconPath'] ?? '').isEmpty ? Colors.white : null,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 15, spreadRadius: 5)],
+                      image: (_app['iconPath'] ?? '').isNotEmpty
+                        ? DecorationImage(image: FileImage(File(_app['iconPath'])), fit: BoxFit.cover, onError: (_, __) {})
+                        : null,
                     ),
-                    child: Icon(Icons.apps, size: 40, color: Color(_app['themeColor'] ?? 0xFF6A11CB)),
+                    child: (_app['iconPath'] ?? '').isEmpty
+                      ? Icon(Icons.apps, size: 40, color: Color(_app['themeColor'] ?? 0xFF6A11CB))
+                      : null,
                   ),
                   const SizedBox(height: 12),
                   Text(_app['name'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
