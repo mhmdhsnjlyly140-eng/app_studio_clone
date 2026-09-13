@@ -9,8 +9,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-java@v4
         with:
@@ -50,8 +48,6 @@ jobs:
               <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>
               <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
               <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
-              <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
-              <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
           '''
           content = re.sub(r'(<manifest[^>]*>)', r'\1\n' + perms, content, count=1)
           with open(path, 'w', encoding='utf-8') as f:
@@ -87,34 +83,53 @@ jobs:
           convert icon.png -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
           convert icon.png -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
-      - name: Auto Increment Version
+      - name: Decode Keystore
         run: |
-          VERSION_FILE="version.txt"
-          if [ -f "$VERSION_FILE" ]; then
-            OLD_VERSION=$(cat $VERSION_FILE)
-          else
-            OLD_VERSION=1
-          fi
-          NEW_VERSION=$((OLD_VERSION + 1))
-          echo $NEW_VERSION > $VERSION_FILE
-          sed -i "s|^version: .*|version: 1.0.$NEW_VERSION+$NEW_VERSION|" pubspec.yaml
-          sed -i "s|versionCode = .*|versionCode = $NEW_VERSION|" android/app/build.gradle.kts
-          sed -i "s|versionName = .*|versionName = \"1.0.$NEW_VERSION\"|" android/app/build.gradle.kts
-          echo "نسخه جدید: 1.0.$NEW_VERSION"
-          grep "^version:" pubspec.yaml
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/appland-release.jks
+
+      - name: Set up Signing Config
+        run: |
+          cat > android/key.properties << EOF
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          storeFile=appland-release.jks
+          EOF
+          python3 - << 'PYEOF'
+          path = 'android/app/build.gradle.kts'
+          with open(path, 'r', encoding='utf-8') as f:
+              content = f.read()
+          signing_block = '''
+          import java.util.Properties
+          import java.io.FileInputStream
+
+          val keystoreProperties = Properties()
+          val keystorePropertiesFile = rootProject.file("key.properties")
+          if (keystorePropertiesFile.exists()) {
+              keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+          }
+          '''
+          content = signing_block + "\n" + content
+          content = content.replace("buildTypes {", """
+          signingConfigs {
+              create("release") {
+                  keyAlias = keystoreProperties["keyAlias"] as String
+                  keyPassword = keystoreProperties["keyPassword"] as String
+                  storeFile = file(keystoreProperties["storeFile"] as String)
+                  storePassword = keystoreProperties["storePassword"] as String
+              }
+          }
+          buildTypes {""")
+          content = content.replace('signingConfig = signingConfigs.getByName("debug")', 'signingConfig = signingConfigs.getByName("release")')
+          with open(path, 'w', encoding='utf-8') as f:
+              f.write(content)
+          PYEOF
 
       - name: Build APK
         run: flutter build apk --release --dart-define=BAZAAR_RSA_KEY=${{ secrets.BAZAAR_RSA_KEY }}
 
-      - name: Commit Version File
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add version.txt || true
-          git commit -m "auto: increment version [skip ci]" || true
-          git push || true
-
-      - uses: actions/upload-artifact@v4
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
           name: appland-apk
           path: build/app/outputs/flutter-apk/app-release.apk
