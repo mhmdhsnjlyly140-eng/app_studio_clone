@@ -45,16 +45,12 @@ jobs:
           path = 'android/app/src/main/AndroidManifest.xml'
           with open(path, 'r', encoding='utf-8') as f:
               content = f.read()
-
-          # Permissions
           perms = '''    <uses-permission android:name="android.permission.INTERNET"/>
               <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>
               <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
               <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
           '''
           content = re.sub(r'(<manifest[^>]*>)', r'\1\n' + perms, content, count=1)
-
-          # Queries for Myket (قبل از <application>)
           queries_block = '''    <queries>
                   <package android:name="ir.mservices.market" />
                   <intent>
@@ -64,7 +60,6 @@ jobs:
               </queries>
           '''
           content = content.replace('<application', queries_block + '    <application', 1)
-
           with open(path, 'w', encoding='utf-8') as f:
               f.write(content)
           PYEOF
@@ -72,7 +67,16 @@ jobs:
       - name: Install deps
         run: |
           flutter pub get
+          flutter pub add shared_preferences
+          flutter pub add url_launcher
+          flutter pub add image_picker
           flutter pub add myket_iap:1.1.12
+          flutter pub add gal
+          flutter pub add path_provider
+          flutter pub add share_plus
+          flutter pub add "file_picker:^8.1.2"
+          flutter pub add video_player
+          flutter pub add audioplayers
 
       - name: Add JitPack
         run: |
@@ -186,4 +190,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: appland-apk
-          file: build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
