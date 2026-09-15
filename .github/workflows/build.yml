@@ -10,10 +10,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '17'
+          java-version: '21'
 
       - uses: subosito/flutter-action@v2
         with:
@@ -37,34 +38,51 @@ jobs:
           sed -i 's|ndkVersion = flutter.ndkVersion|ndkVersion = "27.0.12077973"|' android/app/build.gradle.kts || true
           sed -i 's|minSdk = flutter.minSdkVersion|minSdk = 24|' android/app/build.gradle.kts || true
 
-      - name: Add Permissions
+      - name: Add Permissions and Queries
         run: |
           python3 - << 'PYEOF'
           import re
           path = 'android/app/src/main/AndroidManifest.xml'
           with open(path, 'r', encoding='utf-8') as f:
               content = f.read()
+
+          # Permissions
           perms = '''    <uses-permission android:name="android.permission.INTERNET"/>
               <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>
               <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
               <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
           '''
           content = re.sub(r'(<manifest[^>]*>)', r'\1\n' + perms, content, count=1)
+
+          # Queries for Myket (قبل از <application>)
+          queries_block = '''    <queries>
+                  <package android:name="ir.mservices.market" />
+                  <intent>
+                      <action android:name="ir.mservices.market.InAppBillingService.BIND" />
+                      <data android:mimeType="*/*" />
+                  </intent>
+              </queries>
+          '''
+          content = content.replace('<application', queries_block + '    <application', 1)
+
           with open(path, 'w', encoding='utf-8') as f:
               f.write(content)
           PYEOF
 
       - name: Install deps
-        run: flutter pub get
+        run: |
+          flutter pub get
+          flutter pub add myket_iap:1.1.12
 
       - name: Add JitPack
         run: |
           GRADLE_FILE=android/build.gradle.kts
           if [ -f "$GRADLE_FILE" ]; then
-            sed -i 's|repositories {|repositories {\n        maven { url = uri("https://jitpack.io") }|' $GRADLE_FILE
+            sed -i 's|mavenCentral()|mavenCentral()\n        maven { url = uri("https://jitpack.io") }|' $GRADLE_FILE
+            sed -i 's|google()|google()\n        maven { url = uri("https://jitpack.io") }|' $GRADLE_FILE || true
           fi
 
-      - name: Set up MainActivity
+      - name: Set up MainActivity for Myket Billing
         run: |
           mkdir -p android/app/src/main/kotlin/ir/appland/jalili
           cat > android/app/src/main/kotlin/ir/appland/jalili/MainActivity.kt << 'KOTLIN_EOF'
@@ -72,6 +90,24 @@ jobs:
           import io.flutter.embedding.android.FlutterFragmentActivity
           class MainActivity: FlutterFragmentActivity()
           KOTLIN_EOF
+
+      - name: Add Myket Manifest Placeholders
+        run: |
+          python3 - << 'PYEOF'
+          path = 'android/app/build.gradle.kts'
+          with open(path, 'r', encoding='utf-8') as f:
+              content = f.read()
+          placeholders = '''
+                  val marketApplicationId = "ir.mservices.market"
+                  val marketBindAddress = "ir.mservices.market.InAppBillingService.BIND"
+                  manifestPlaceholders["marketApplicationId"] = marketApplicationId
+                  manifestPlaceholders["marketBindAddress"] = marketBindAddress
+                  manifestPlaceholders["marketPermission"] = "$marketApplicationId.BILLING"
+          '''
+          content = content.replace('defaultConfig {', 'defaultConfig {' + placeholders, 1)
+          with open(path, 'w', encoding='utf-8') as f:
+              f.write(content)
+          PYEOF
 
       - name: Apply Custom Icon
         run: |
@@ -126,10 +162,28 @@ jobs:
           PYEOF
 
       - name: Build APK
-        run: flutter build apk --release --dart-define=BAZAAR_RSA_KEY=${{ secrets.BAZAAR_RSA_KEY }}
+        run: flutter build apk --release --dart-define=MYKET_RSA_KEY=${{ secrets.MYKET_RSA_KEY }}
+
+      - name: Align and Sign APK
+        run: |
+          APKSIGNER=$(find $ANDROID_HOME/build-tools -name "apksigner" -type f | sort -V | tail -n 1)
+          ZIPALIGN=$(find $ANDROID_HOME/build-tools -name "zipalign" -type f | sort -V | tail -n 1)
+          $ZIPALIGN -v 4 build/app/outputs/flutter-apk/app-release.apk /tmp/app-aligned.apk
+          $APKSIGNER sign \
+            --ks android/app/appland-release.jks \
+            --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
+            --ks-pass "pass:${{ secrets.KEYSTORE_PASSWORD }}" \
+            --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
+            --v1-signing-enabled true \
+            --v2-signing-enabled true \
+            --v3-signing-enabled true \
+            --out build/app/outputs/flutter-apk/app-release-signed.apk \
+            /tmp/app-aligned.apk
+          mv build/app/outputs/flutter-apk/app-release-signed.apk build/app/outputs/flutter-apk/app-release.apk
+          $APKSIGNER verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: appland-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          file: build/app/outputs/flutter-apk/app-release.apk
