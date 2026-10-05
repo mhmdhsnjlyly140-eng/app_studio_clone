@@ -3,6 +3,9 @@ name: Build AppLand APK
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -189,8 +192,30 @@ jobs:
           mv build/app/outputs/flutter-apk/app-release-signed.apk build/app/outputs/flutter-apk/app-release.apk
           $APKSIGNER verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk
 
-      - name: Upload APK
+      - name: Upload APK as Artifact
         uses: actions/upload-artifact@v4
         with:
           name: appland-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Create GitHub Release
+        if: success()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: AppLand v1.0.${{ github.run_number }}
+          body: |
+            🎉 نسخه جدید اپ‌لند منتشر شد!
+            
+            **تغییرات:**
+            - افزودن قابلیت ساخت APK از طریق Termux
+            - افزودن android_intent_plus
+            - مجوز Termux در Manifest
+            
+            **نصب:** فایل APK رو دانلود و نصب کنید.
+          files: build/app/outputs/flutter-apk/app-release.apk
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
