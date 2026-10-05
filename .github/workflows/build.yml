@@ -49,10 +49,12 @@ jobs:
               <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>
               <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
               <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+              <uses-permission android:name="com.termux.permission.RUN_COMMAND"/>
           '''
           content = re.sub(r'(<manifest[^>]*>)', r'\1\n' + perms, content, count=1)
           queries_block = '''    <queries>
                   <package android:name="ir.mservices.market" />
+                  <package android:name="com.termux" />
                   <intent>
                       <action android:name="ir.mservices.market.InAppBillingService.BIND" />
                       <data android:mimeType="*/*" />
@@ -77,6 +79,7 @@ jobs:
           flutter pub add "file_picker:^8.1.2"
           flutter pub add video_player
           flutter pub add audioplayers
+          flutter pub add android_intent_plus
 
       - name: Add JitPack
         run: |
