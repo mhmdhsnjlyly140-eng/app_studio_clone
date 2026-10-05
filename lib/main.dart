@@ -74,6 +74,40 @@ String getActionName(String? id) {
   return 'نامشخص';
 }
 
+// ═══════════════════════════════════════════════════════════
+// 🆕 تغییر ۱: تابع ساخت APK با Termux
+// ═══════════════════════════════════════════════════════════
+Future<bool> buildApkWithTermux({
+  required String appName,
+  required String welcome,
+  required String packageName,
+  required String outputName,
+}) async {
+  try {
+    final configJson = jsonEncode({
+      'app_name': appName,
+      'welcome': welcome,
+    });
+
+    final intent = AndroidIntent(
+      action: 'com.termux.RUN_COMMAND',
+      package: 'com.termux',
+      arguments: {
+        'com.termux.RUN_COMMAND_PATH':
+            '/data/data/com.termux/files/home/.termux/tasker/build_from_tasker.sh',
+        'com.termux.RUN_COMMAND_ARGUMENTS':
+            '$configJson,$packageName,$outputName',
+        'com.termux.RUN_COMMAND_BACKGROUND': 'false',
+        'com.termux.RUN_COMMAND_SESSION_ACTION': '0',
+      },
+    );
+    await intent.launch();
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 class MyketPurchaseManager {
   static bool _initialized = false;
 
@@ -151,9 +185,9 @@ class FeatureCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final Color? color;
-  const FeatureCard({super.key, required this.icon, required this.title, required this.subtitle, required this.onTap, this.color});
+  const FeatureCard({super.key, required this.icon, required this.title, required this.subtitle, this.onTap, this.color});
   @override
   Widget build(BuildContext context) {
     final c = color ?? const Color(0xFF6A11CB);
@@ -318,6 +352,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     ));
   }
 }
+
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
   @override
@@ -430,7 +465,6 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 }
-
 class HomePage extends StatelessWidget {
   final VoidCallback onStart;
   const HomePage({super.key, required this.onStart});
@@ -509,6 +543,7 @@ class HomePage extends StatelessWidget {
     );
   }
 }
+
 class MyAppsPage extends StatefulWidget {
   const MyAppsPage({super.key});
   @override
@@ -1132,13 +1167,76 @@ class _AppEditorPageState extends State<AppEditorPage> {
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PreviewPage(app: _app!))),
         color: Colors.green,
       ),
+
+      // ═══════════════════════════════════════════════════════════
+      // 🆕 تغییر ۲: FeatureCard خروجی APK با Termux
+      // ═══════════════════════════════════════════════════════════
       FeatureCard(
         icon: Icons.android,
         title: 'خروجی APK',
         subtitle: _hasAccess ? 'ساخت فایل نصب نهایی' : 'برای فعال‌سازی، این اپ رو پرو کنید',
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PreviewPage(app: _app!))),
+        onTap: _hasAccess ? () async {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (c) => const AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(24))),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: Color(0xFF6A11CB)),
+                  SizedBox(height: 20),
+                  Text('در حال ساخت APK...', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  SizedBox(height: 8),
+                  Text('چند ثانیه صبر کن...', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                ],
+              ),
+            ),
+          );
+
+          final success = await buildApkWithTermux(
+            appName: _app!['name'] ?? '',
+            welcome: _app!['welcome'] ?? '',
+            packageName: _app!['packageName'] ?? 'ir.appland.myapp',
+            outputName: (_app!['packageName'] ?? 'app').replaceAll('.', '_'),
+          );
+
+          if (mounted) Navigator.pop(context);
+
+          if (mounted) {
+            await Future.delayed(const Duration(seconds: 4));
+            if (mounted) {
+              showDialog(
+                context: context,
+                builder: (c) => AlertDialog(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                  title: Row(children: [
+                    Icon(success ? Icons.check_circle : Icons.error,
+                        color: success ? Colors.green : Colors.red, size: 30),
+                    const SizedBox(width: 10),
+                    Text(success ? 'موفق!' : 'خطا'),
+                  ]),
+                  content: Text(success
+                    ? '✅ APK در حال ساخته!\n\nچند ثانیه صبر کن، بعد برو پوشه Downloads و فایل نصب رو ببین.'
+                    : '❌ خطا در ساخت APK!\n\nمطمئن شو:\n• Termux نصب هست\n• اسکریپت build_from_tasker.sh آماده‌ست\n• مجوز Termux داده شده'),
+                  actions: [
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(c),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6A11CB),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('باشه'),
+                    ),
+                  ],
+                ),
+              );
+            }
+          }
+        } : null,
         color: _hasAccess ? Colors.green : Colors.grey,
       ),
+
       FeatureCard(icon: Icons.wallpaper, title: 'Splash Screen', subtitle: 'عکس + متن + رنگ + مدت زمان', onTap: _splashDialog, color: Colors.orange),
       FeatureCard(icon: Icons.navigation, title: 'منوی پایین', subtitle: 'ناوبری پایین اپ (حداکثر ۴)', onTap: _bottomMenuDialog, color: Colors.blue),
       FeatureCard(icon: Icons.menu, title: 'منوی کشویی', subtitle: 'منوی کناری اپ', onTap: _drawerMenuDialog, color: Colors.teal),
@@ -2527,6 +2625,7 @@ class _PageEditorPageState extends State<PageEditorPage> {
     }
   }
 }
+
 class PreviewPage extends StatefulWidget {
   final Map<String, dynamic> app;
   const PreviewPage({super.key, required this.app});
