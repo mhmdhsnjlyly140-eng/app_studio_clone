@@ -82,7 +82,7 @@ jobs:
           flutter pub add "file_picker:^8.1.2"
           flutter pub add video_player
           flutter pub add audioplayers
-          flutter pub add android_intent_plus:^5.1.0
+          flutter pub add android_intent_plus:^6.1.0
 
       - name: Add JitPack
         run: |
