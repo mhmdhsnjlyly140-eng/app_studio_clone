@@ -82,7 +82,7 @@ jobs:
           flutter pub add "file_picker:^8.1.2"
           flutter pub add video_player
           flutter pub add audioplayers
-          flutter pub add android_intent_plus
+          flutter pub add android_intent_plus:^5.1.0
 
       - name: Add JitPack
         run: |
@@ -206,12 +206,12 @@ jobs:
           name: AppLand v1.0.${{ github.run_number }}
           body: |
             🎉 نسخه جدید اپ‌لند منتشر شد!
-            
+
             **تغییرات:**
             - افزودن قابلیت ساخت APK از طریق Termux
             - افزودن android_intent_plus
             - مجوز Termux در Manifest
-            
+
             **نصب:** فایل APK رو دانلود و نصب کنید.
           files: build/app/outputs/flutter-apk/app-release.apk
           draft: false
