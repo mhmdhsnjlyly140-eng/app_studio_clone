@@ -174,40 +174,45 @@ class MyketPurchaseManager {
   // بررسی خریدهای قبلی (با queryInventory)
   // ═══════════════════════════════════════════
   static Future<bool> checkPreviousPurchases() async {
-    try {
-      if (!_initialized) await init();
-      if (!_initialized) return false;
+  try {
+    if (!_initialized) await init();
+    if (!_initialized) return false;
 
-      Map<String, dynamic> result = await MyketIAP.queryInventory(
-        querySkuDetails: false,
-      );
+    // استفاده از Map<dynamic, dynamic> به جای Map<String, dynamic>
+    Map<dynamic, dynamic> queryResult = await MyketIAP.queryInventory(
+      querySkuDetails: false,
+    );
 
-      IabResult? inventoryResult = result[MyketIAP.RESULT];
-      if (inventoryResult == null || inventoryResult.isFailure()) {
-        print('Query inventory failed: ${inventoryResult?.getMessage()}');
-        return false;
-      }
+    // استخراج IabResult
+    IabResult? inventoryResult = queryResult[MyketIAP.RESULT];
 
-      Inventory? inventory = result[MyketIAP.INVENTORY];
-      if (inventory == null) {
-        print('Inventory is null');
-        return false;
-      }
-
-      Purchase? purchasePro = inventory.mPurchaseMap['appland_pro'];
-      Purchase? purchaseDaemi = inventory.mPurchaseMap['Appland_daemi'];
-
-      if (purchasePro != null || purchaseDaemi != null) {
-        print('Previous purchase found!');
-        return true;
-      }
-
-      print('No previous purchases found');
-      return false;
-    } catch (e) {
-      print('Check purchases error: $e');
+    // بررسی موفقیت
+    if (inventoryResult == null || inventoryResult.isFailure()) {
+      print('Query inventory failed: ${inventoryResult?.getMessage()}');
       return false;
     }
+
+    // استخراج Inventory
+    Inventory? inventory = queryResult[MyketIAP.INVENTORY];
+    if (inventory == null) {
+      print('Inventory is null');
+      return false;
+    }
+
+    // بررسی وجود محصول appland_pro یا Appland_daemi
+    bool hasPro = inventory.mPurchaseMap.containsKey('appland_pro');
+    bool hasDaemi = inventory.mPurchaseMap.containsKey('Appland_daemi');
+
+    if (hasPro || hasDaemi) {
+      print('Previous purchase found! Pro: $hasPro, Daemi: $hasDaemi');
+      return true;
+    }
+
+    print('No previous purchases found');
+    return false;
+  } catch (e) {
+    print('Check purchases error: $e');
+    return false;
   }
 }
 class GradientButton extends StatelessWidget {
