@@ -126,32 +126,85 @@ class MyketPurchaseManager {
   static Future<void> init() async {
     if (_initialized) return;
     try {
-      await MyketIAP.init(rsaKey: myketRsaKey, enableDebugLogging: false);
+      await MyketIAP.init(rsaKey: myketRsaKey, enableDebugLogging: true);
       _initialized = true;
-    } catch (_) {}
+    } catch (e) {
+      print('MyketIAP init error: $e');
+    }
   }
 
   static Future<bool> buy(String sku) async {
     try {
       if (!_initialized) await init();
-      if (!_initialized) return false;
-      var result = await MyketIAP.launchPurchaseFlow(sku: sku, payload: 'appland');
-      if (result == null) return false;
+      if (!_initialized) {
+        print('MyketIAP not initialized');
+        return false;
+      }
+
+      // ۱. اجرای پرداخت
+      var result = await MyketIAP.launchPurchaseFlow(
+        sku: sku,
+        payload: 'appland',
+      );
+
+      print('Purchase result: $result');
+      if (result == null) {
+        print('Purchase result is null');
+        return false;
+      }
+
       var purchaseResult = result['RESULT'];
       var purchase = result['PURCHASE'];
+
+      // ۲. بررسی موفقیت پرداخت
       if (purchaseResult != null && purchaseResult.isSuccess() == true && purchase != null) {
+        print('Purchase successful! Consuming...');
+
+        // ۳. مصرف خرید (برای محصولات مصرفی)
         try {
           await MyketIAP.consume(purchase: purchase);
-        } catch (_) {}
+          print('Purchase consumed');
+        } catch (e) {
+          print('Consume error: $e');
+        }
+
         return true;
       }
+
+      print('Purchase failed: $purchaseResult');
       return false;
-    } catch (_) {
+    } catch (e) {
+      print('Purchase exception: $e');
+      return false;
+    }
+  }
+
+  // ═══════════════════════════════════════════
+  // بررسی خریدهای قبلی (مهم!)
+  // ═══════════════════════════════════════════
+  static Future<bool> checkPreviousPurchases() async {
+    try {
+      if (!_initialized) await init();
+      if (!_initialized) return false;
+
+      // بررسی خریدهای قبلی
+      var purchases = await MyketIAP.getPurchases();
+      if (purchases == null || purchases.isEmpty) return false;
+
+      for (var purchase in purchases) {
+        var sku = purchase.sku;
+        if (sku == 'appland_pro' || sku == 'Appland_daemi') {
+          print('Found previous purchase: $sku');
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      print('Check purchases error: $e');
       return false;
     }
   }
 }
-
 class GradientButton extends StatelessWidget {
   final String text;
   final IconData icon;
