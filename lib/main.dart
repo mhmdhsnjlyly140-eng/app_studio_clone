@@ -10,7 +10,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:video_player/video_player.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:android_intent_plus/android_intent_plus.dart' show AndroidIntent;
+AndroidIntent;
 import 'dart:convert';
 import 'dart:io';
 
@@ -89,20 +89,33 @@ Future<bool> buildApkWithTermux({
       'welcome': welcome,
     });
 
-    final intent = AndroidIntent(
-      action: 'com.termux.RUN_COMMAND',
-      package: 'com.termux',
-      arguments: {
-        'com.termux.RUN_COMMAND_PATH':
-            '/data/data/com.termux/files/home/.termux/tasker/build_from_tasker.sh',
-        'com.termux.RUN_COMMAND_ARGUMENTS':
-            '$configJson,$packageName,$outputName',
-        'com.termux.RUN_COMMAND_BACKGROUND': 'false',
-        'com.termux.RUN_COMMAND_SESSION_ACTION': '0',
-      },
+    // ساخت دستور برای Termux
+    final command = 'bash /data/data/com.termux/files/home/.termux/tasker/build_from_tasker.sh '
+        '"${configJson.replaceAll('"', '\\"')}" '
+        '"$packageName" '
+        '"$outputName"';
+
+    // استفاده از intent:// برای باز کردن Termux
+    final encodedCmd = Uri.encodeComponent(command);
+    final uri = Uri.parse(
+      'intent://run#Intent;scheme=termux;'
+      'package=com.termux;'
+      'S.com.termux.RUN_COMMAND_PATH=/data/data/com.termux/files/home/.termux/tasker/build_from_tasker.sh;'
+      'S.com.termux.RUN_COMMAND_ARGUMENTS=$encodedCmd;'
+      'end'
     );
-    await intent.launch();
-    return true;
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+      return true;
+    }
+
+    // راه جایگزین: باز کردن Termux
+    final fallbackUri = Uri.parse('termux://');
+    if (await canLaunchUrl(fallbackUri)) {
+      await launchUrl(fallbackUri);
+    }
+    return false;
   } catch (e) {
     return false;
   }
