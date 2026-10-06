@@ -159,78 +159,6 @@ class MyketPurchaseManager {
       return false;
     }
   }
-
-  static Future<bool> checkPreviousPurchases() async {
-    try {
-      if (!_initialized) await init();
-      if (!_initialized) return false;
-
-      Map<dynamic, dynamic> queryResult = await MyketIAP.queryInventory(
-        querySkuDetails: false,
-      );
-
-      IabResult? inventoryResult = queryResult[MyketIAP.RESULT];
-      if (inventoryResult == null || inventoryResult.isFailure()) {
-        return false;
-      }
-
-      Inventory? inventory = queryResult[MyketIAP.INVENTORY];
-      if (inventory == null) return false;
-
-      bool hasPro = inventory.mPurchaseMap.containsKey('appland_pro');
-      bool hasDaemi = inventory.mPurchaseMap.containsKey('Appland_daemi');
-
-      return hasPro || hasDaemi;
-    } catch (e) {
-      return false;
-    }
-  }
-}
-
-  // ═══════════════════════════════════════════
-  // بررسی خریدهای قبلی (با queryInventory)
-  // ═══════════════════════════════════════════
-  static Future<bool> checkPreviousPurchases() async {
-  try {
-    if (!_initialized) await init();
-    if (!_initialized) return false;
-
-    // استفاده از Map<dynamic, dynamic> به جای Map<String, dynamic>
-    Map<dynamic, dynamic> queryResult = await MyketIAP.queryInventory(
-      querySkuDetails: false,
-    );
-
-    // استخراج IabResult
-    IabResult? inventoryResult = queryResult[MyketIAP.RESULT];
-
-    // بررسی موفقیت
-    if (inventoryResult == null || inventoryResult.isFailure()) {
-      print('Query inventory failed: ${inventoryResult?.getMessage()}');
-      return false;
-    }
-
-    // استخراج Inventory
-    Inventory? inventory = queryResult[MyketIAP.INVENTORY];
-    if (inventory == null) {
-      print('Inventory is null');
-      return false;
-    }
-
-    // بررسی وجود محصول appland_pro یا Appland_daemi
-    bool hasPro = inventory.mPurchaseMap.containsKey('appland_pro');
-    bool hasDaemi = inventory.mPurchaseMap.containsKey('Appland_daemi');
-
-    if (hasPro || hasDaemi) {
-      print('Previous purchase found! Pro: $hasPro, Daemi: $hasDaemi');
-      return true;
-    }
-
-    print('No previous purchases found');
-    return false;
-  } catch (e) {
-    print('Check purchases error: $e');
-    return false;
-  }
 }
 
 class GradientButton extends StatelessWidget {
@@ -367,18 +295,7 @@ final themeNotifier = ThemeNotifier();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  try {
-    await MyketPurchaseManager.init();
-    final hasPurchased = await MyketPurchaseManager.checkPreviousPurchases();
-    if (hasPurchased) {
-      await proStatus.setPro(true);
-      print('Pro status restored from previous purchase');
-    }
-  } catch (e) {
-    print('Init error: $e');
-  }
-
+  await MyketPurchaseManager.init();
   runApp(const AppLand());
 }
 
