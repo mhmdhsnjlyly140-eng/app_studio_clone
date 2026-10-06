@@ -136,21 +136,14 @@ class MyketPurchaseManager {
   static Future<bool> buy(String sku) async {
     try {
       if (!_initialized) await init();
-      if (!_initialized) {
-        print('MyketIAP not initialized');
-        return false;
-      }
+      if (!_initialized) return false;
 
       var result = await MyketIAP.launchPurchaseFlow(
         sku: sku,
         payload: 'appland',
       );
 
-      print('Purchase result: $result');
-      if (result == null) {
-        print('Purchase result is null');
-        return false;
-      }
+      if (result == null) return false;
 
       var purchaseResult = result['RESULT'];
       var purchase = result['PURCHASE'];
@@ -158,17 +151,41 @@ class MyketPurchaseManager {
       if (purchaseResult != null &&
           purchaseResult.isSuccess() == true &&
           purchase != null) {
-        print('Purchase successful!');
         return true;
       }
 
-      print('Purchase failed: $purchaseResult');
       return false;
     } catch (e) {
-      print('Purchase exception: $e');
       return false;
     }
   }
+
+  static Future<bool> checkPreviousPurchases() async {
+    try {
+      if (!_initialized) await init();
+      if (!_initialized) return false;
+
+      Map<dynamic, dynamic> queryResult = await MyketIAP.queryInventory(
+        querySkuDetails: false,
+      );
+
+      IabResult? inventoryResult = queryResult[MyketIAP.RESULT];
+      if (inventoryResult == null || inventoryResult.isFailure()) {
+        return false;
+      }
+
+      Inventory? inventory = queryResult[MyketIAP.INVENTORY];
+      if (inventory == null) return false;
+
+      bool hasPro = inventory.mPurchaseMap.containsKey('appland_pro');
+      bool hasDaemi = inventory.mPurchaseMap.containsKey('Appland_daemi');
+
+      return hasPro || hasDaemi;
+    } catch (e) {
+      return false;
+    }
+  }
+}
 
   // ═══════════════════════════════════════════
   // بررسی خریدهای قبلی (با queryInventory)
@@ -215,6 +232,7 @@ class MyketPurchaseManager {
     return false;
   }
 }
+
 class GradientButton extends StatelessWidget {
   final String text;
   final IconData icon;
