@@ -141,7 +141,6 @@ class MyketPurchaseManager {
         return false;
       }
 
-      // ۱. اجرای پرداخت
       var result = await MyketIAP.launchPurchaseFlow(
         sku: sku,
         payload: 'appland',
@@ -156,18 +155,10 @@ class MyketPurchaseManager {
       var purchaseResult = result['RESULT'];
       var purchase = result['PURCHASE'];
 
-      // ۲. بررسی موفقیت پرداخت
-      if (purchaseResult != null && purchaseResult.isSuccess() == true && purchase != null) {
-        print('Purchase successful! Consuming...');
-
-        // ۳. مصرف خرید (برای محصولات مصرفی)
-        try {
-          await MyketIAP.consume(purchase: purchase);
-          print('Purchase consumed');
-        } catch (e) {
-          print('Consume error: $e');
-        }
-
+      if (purchaseResult != null &&
+          purchaseResult.isSuccess() == true &&
+          purchase != null) {
+        print('Purchase successful!');
         return true;
       }
 
@@ -180,24 +171,38 @@ class MyketPurchaseManager {
   }
 
   // ═══════════════════════════════════════════
-  // بررسی خریدهای قبلی (مهم!)
+  // بررسی خریدهای قبلی (با queryInventory)
   // ═══════════════════════════════════════════
   static Future<bool> checkPreviousPurchases() async {
     try {
       if (!_initialized) await init();
       if (!_initialized) return false;
 
-      // بررسی خریدهای قبلی
-      var purchases = await MyketIAP.getPurchases();
-      if (purchases == null || purchases.isEmpty) return false;
+      Map<String, dynamic> result = await MyketIAP.queryInventory(
+        querySkuDetails: false,
+      );
 
-      for (var purchase in purchases) {
-        var sku = purchase.sku;
-        if (sku == 'appland_pro' || sku == 'Appland_daemi') {
-          print('Found previous purchase: $sku');
-          return true;
-        }
+      IabResult? inventoryResult = result[MyketIAP.RESULT];
+      if (inventoryResult == null || inventoryResult.isFailure()) {
+        print('Query inventory failed: ${inventoryResult?.getMessage()}');
+        return false;
       }
+
+      Inventory? inventory = result[MyketIAP.INVENTORY];
+      if (inventory == null) {
+        print('Inventory is null');
+        return false;
+      }
+
+      Purchase? purchasePro = inventory.mPurchaseMap['appland_pro'];
+      Purchase? purchaseDaemi = inventory.mPurchaseMap['Appland_daemi'];
+
+      if (purchasePro != null || purchaseDaemi != null) {
+        print('Previous purchase found!');
+        return true;
+      }
+
+      print('No previous purchases found');
       return false;
     } catch (e) {
       print('Check purchases error: $e');
@@ -337,7 +342,22 @@ class ThemeNotifier extends ChangeNotifier {
 }
 final themeNotifier = ThemeNotifier();
 
-void main() => runApp(const AppLand());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    await MyketPurchaseManager.init();
+    final hasPurchased = await MyketPurchaseManager.checkPreviousPurchases();
+    if (hasPurchased) {
+      await proStatus.setPro(true);
+      print('Pro status restored from previous purchase');
+    }
+  } catch (e) {
+    print('Init error: $e');
+  }
+
+  runApp(const AppLand());
+}
 
 class AppLand extends StatelessWidget {
   const AppLand({super.key});
